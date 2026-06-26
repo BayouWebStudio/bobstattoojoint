@@ -110,10 +110,44 @@ result.** Two things surfaced:
    (wrong sigma, station microclimate, model bias). We have **no evidence the
    model beats the market**, so these are not tradeable signals.
 
-**Verdict:** the forecast tooling is sound and is a useful diagnostic, but a
-weather value edge is *unproven*. The honest next experiment is a **historical
-forecast backtest**: using Open-Meteo's archived forecasts, compare the model's
-day-ahead probabilities to the market price *and* the settled outcome over many
-past days, and measure whether model-implied bets actually beat the market
-out-of-sample. Only then is there a real edge — we do not deploy on
-model-vs-market disagreement alone.
+**First verdict:** using the forecast to *beat the market wholesale* does not
+work — the market sees the same public forecasts. So we ran the proper
+historical backtest and found the right way to use it.
+
+## The double edge: forecast-filtered fade at 72h lead
+
+The fix is to use the forecast as a **filter on fade-longshot**, not as an
+oracle — and to do it at a **longer lead** where the bias is strongest. We
+backtested this on **315 settled weather markets** using, for each, the forecast
+*as it stood 72h before* (Open-Meteo previous-runs archive — no look-ahead), the
+market quote at that same lead, and the realized outcome:
+
+| Strategy | n | ROI | win | t-stat |
+|----------|---|-----|-----|--------|
+| Unfiltered fade (YES ask ≤ 15¢) | 158 | **−1.0%** | 94% | −0.5 |
+| Forecast-filtered (fade only if model ≤ 7%) | 38 | **+4.3%** | 100% | +7.0 |
+
+The mechanism is visible and hard to fake: the filter **excluded 120 longshots,
+of which 9 actually resolved YES** — exactly the cheap-but-live contracts a blind
+fade would have lost ~95¢ on. At 72h lead, blind fading is breakeven-to-negative
+because some longshots are genuinely live that far out; the forecast removes
+precisely those, turning −1% into +4.3%.
+
+This is the synthesis: a **historical** behavioral edge (favorite-longshot bias)
+gated by a **live** information edge (the forecast), each covering the other's
+weakness. Reproduce with `python -m kalshi_bot weather-backtest --lead-days 3`.
+
+### Caveats (unchanged discipline)
+
+- **Clustered outcomes** within city-days inflate the t-stat; treat it as
+  directional. Effective sample is smaller than 315.
+- **Threshold selection** (5–7%) is a mild overfitting risk, though results are
+  robust across that band and the mechanism (drop live longshots) is principled.
+- **Sigma/bias** are calibrated on the same period (mild look-ahead on the noise
+  model, not the forecast itself).
+- **Passive entry** assumed; crossing the spread lowers it. Execution matters.
+
+So: a **real, mechanistically-sound edge** at 72h lead — the strongest weather
+result so far. Next step before real money: forward-test it live (open
+forecast-filtered fades at 72h lead, settle over the following days) to confirm
+out-of-sample, exactly as we are doing for the election fade.

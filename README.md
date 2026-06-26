@@ -55,6 +55,9 @@ python -m kalshi_bot calibrate --max-yes-ask 15 --entry mid
 # Weather: live forecast (Open-Meteo) vs market for high-temp markets (diagnostic)
 python -m kalshi_bot weather --cities KXHIGHNY KXHIGHCHI
 
+# Double-edge backtest: forecast-filtered fade-longshot at 72h lead (the real edge)
+python -m kalshi_bot weather-backtest --lead-days 3
+
 # Forward (out-of-sample) paper test: open live positions now, settle them later
 python -m kalshi_bot forward scan      # open paper NO positions on live longshots
 python -m kalshi_bot forward settle    # mark any now-settled positions (run over days)
@@ -191,13 +194,13 @@ the coming days/weeks as those markets resolve to accumulate genuine
 out-of-sample results — this is the real test of the edge, and we evaluate it
 before investing in a passive-execution layer.
 
-**Weather forecasting (honest negative result).** We built a live forecast model
-(`weather/`, Open-Meteo GFS/ECMWF/ICON) to price temperature markets directly.
-It is well-calibrated, but live testing found **no demonstrated edge**: on
-same-day markets the model is *less* informed than the market (which sees
-intraday data), and at lead time, model-vs-market disagreement is not proof the
-model is right. See [docs/STRATEGY.md](docs/STRATEGY.md) — the next step is a
-historical-forecast backtest before trusting any weather value signal.
+**Weather: the double edge (validated in backtest).** Using a forecast to beat
+the market wholesale fails (the market sees the same forecasts). But using it as
+a *filter* on fade-longshot, at 72h lead, works: on 315 settled markets,
+unfiltered fading is −1.0% ROI while **forecast-filtered fading is +4.3%** (the
+filter excluded 120 cheap longshots, 9 of which actually hit — the losses it
+avoided). A historical behavioral edge gated by a live information edge. See
+[docs/STRATEGY.md](docs/STRATEGY.md); reproduce with `weather-backtest`.
 
 ## Disclaimer
 

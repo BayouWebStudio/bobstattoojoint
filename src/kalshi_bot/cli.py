@@ -125,6 +125,11 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Series to scan (default: all weather cities)")
     wx.add_argument("--min-edge", type=float, default=3.0, help="Min EV per contract (cents)")
 
+    wxb = sub.add_parser("weather-backtest",
+                         help="Double-edge backtest: forecast-filtered fade-longshot at lead")
+    wxb.add_argument("--lead-days", type=int, default=3, help="Forecast/entry lead (days)")
+    wxb.add_argument("--per-city", type=int, default=45, help="Max settled markets per city")
+
     cal = sub.add_parser("calibrate",
                          help="Measure favorite-longshot bias on settled Kalshi markets")
     cal.add_argument("--series", nargs="*", default=[],
@@ -364,6 +369,21 @@ def cmd_weather(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_weather_backtest(args: argparse.Namespace) -> int:
+    from .weather.backtest import collect_samples, fade_backtest
+
+    client = KalshiClient(load_settings())
+    print(f"Collecting settled weather markets + {args.lead_days}d-lead forecasts...")
+    samples = collect_samples(client, lead_days=args.lead_days, per_city=args.per_city)
+    print(f"{len(samples)} samples.\n")
+    print(f"Fade-longshot at {args.lead_days*24}h lead (passive entry, Kalshi fees):")
+    print(f"  unfiltered           : {fade_backtest(samples)}")
+    for thr in (0.10, 0.07, 0.05):
+        print(f"  forecast-filter<={int(thr*100):2d}% : {fade_backtest(samples, filter_prob=thr)}")
+    print("\ncaveat: outcomes cluster within city-days; treat t-stats as directional.")
+    return 0
+
+
 def cmd_calibrate(args: argparse.Namespace) -> int:
     from .research.calibration import calibration_table, fade_longshot_backtest
     from .research.collect import collect_settled_samples
@@ -437,6 +457,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_forward(args)
     if args.command == "weather":
         return cmd_weather(args)
+    if args.command == "weather-backtest":
+        return cmd_weather_backtest(args)
     return 1
 
 
