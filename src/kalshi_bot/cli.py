@@ -105,6 +105,15 @@ def build_parser() -> argparse.ArgumentParser:
     xarb.add_argument("--threshold", type=int, default=1, help="Min guaranteed profit (cents)")
     xarb.add_argument("--rounds", type=int, default=1, help="Number of polling rounds")
 
+    cal = sub.add_parser("calibrate",
+                         help="Measure favorite-longshot bias on settled Kalshi markets")
+    cal.add_argument("--series", nargs="*", default=[],
+                     help="Series tickers to sample (default: a liquid election set)")
+    cal.add_argument("--max-yes-ask", type=int, default=15, help="Longshot threshold (cents)")
+    cal.add_argument("--entry", choices=["mid", "ask"], default="mid",
+                     help="Entry model: passive mid or aggressive (cross spread)")
+    cal.add_argument("--max-calls", type=int, default=500, help="Max candlestick API calls")
+
     rec = sub.add_parser("record", help="Record live market snapshots to CSV for backtesting")
     rec.add_argument("--out", required=True, help="Output CSV path")
     rec.add_argument("--tickers", nargs="*", default=[], help="Market tickers to record")
@@ -260,6 +269,38 @@ def cmd_xarb(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    from .research.calibration import calibration_table, fade_longshot_backtest
+    from .research.collect import collect_settled_samples
+
+    client = KalshiClient(load_settings())
+    print("Collecting settled-market samples from Kalshi (public data)...")
+    samples = collect_settled_samples(
+        client, args.series or None, max_candlestick_calls=args.max_calls
+    )
+    if not samples:
+        print("No samples collected (try different --series).", file=sys.stderr)
+        return 2
+
+    print(f"\nCalibration over {len(samples)} settled markets:")
+    print(f"  {'band':10} {'n':>4} {'implied':>8} {'realized':>9} {'gap':>6}")
+    for b in calibration_table(samples):
+        if b.n < 5:
+            continue
+        print(f"  {f'{b.low}-{b.high}':10} {b.n:>4} {b.implied_pct:>7.0f}% "
+              f"{b.realized_pct:>8.1f}% {b.gap:>+6.1f}")
+
+    print(f"\nFade-longshot backtest (YES ask <= {args.max_yes_ask}c, {args.entry} entry, "
+          f"Kalshi fees):")
+    stats = fade_longshot_backtest(
+        samples, max_yes_ask=args.max_yes_ask, entry=args.entry
+    )
+    print(f"  {stats}")
+    print("  caveat: outcomes cluster within a few events, so the t-stat overstates "
+          "significance; treat as directional.")
+    return 0
+
+
 def cmd_record(args: argparse.Namespace) -> int:
     if args.mock:
         feed = MockFeed().stream(max_ticks=args.ticks)
@@ -295,6 +336,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_record(args)
     if args.command == "xarb":
         return cmd_xarb(args)
+    if args.command == "calibrate":
+        return cmd_calibrate(args)
     return 1
 
 

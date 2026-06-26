@@ -49,6 +49,9 @@ python -m kalshi_bot backtest --mock --ticks 400
 # Backtest over REAL Kalshi candlestick history (public data, no keys needed):
 python -m kalshi_bot backtest --series KXWARMING --kalshi-ticker KXWARMING-50 --days 90
 
+# Measure the favorite-longshot edge on real settled markets (see docs/STRATEGY.md):
+python -m kalshi_bot calibrate --max-yes-ask 15 --entry mid
+
 # Run tests
 pytest
 ```
@@ -98,8 +101,12 @@ src/kalshi_bot/
   strategy/
     base.py            # Strategy interface + Signal type
     threshold.py       # example: mean-reversion threshold strategy
+    fade_longshot.py   # favorite-longshot-bias strategy (the measured edge)
     arbitrage.py       # partition arbitrage detector (mutually-exclusive events)
     crossvenue.py      # cross-venue arbitrage detector (cheapest YES + cheapest NO)
+  research/
+    calibration.py     # calibration table + settlement backtest + Kalshi fees
+    collect.py         # build settlement samples from the live API
   venues/
     base.py            # Quote + Venue protocol (normalizes venues to cents)
     kalshi_venue.py    # Kalshi as a Venue
@@ -149,6 +156,20 @@ so the bot is validated against **real** markets without credentials:
 - **Strategy backtests** run on real candlestick history (e.g. a market that
   moved 38c -> 81c -> 26c over 120 days), exercising the full
   feed -> strategy -> broker -> metrics pipeline on genuine prices.
+
+## Does it have an edge?
+
+Yes — a modest, real one. A hypothesis-driven search (documented in
+[docs/STRATEGY.md](docs/STRATEGY.md)) found the **favorite-longshot bias** on
+Kalshi: longshot contracts (YES ≤ ~15¢) are overpriced and resolve YES less
+often than their price implies. Fading them (buying NO, holding to settlement)
+returns roughly **+2.5% after fees crossing the spread, ~+3.5% with passive
+entry**, measured on ~100 real settled markets.
+
+It is real but **modest, skewed (rare large losses), and capacity-limited** — a
+behavioral edge to deploy with small size and broad diversification, not a money
+printer. The naive mean-reversion strategy, by contrast, does *not* beat costs.
+Reproduce the measurement with `python -m kalshi_bot calibrate`.
 
 ## Disclaimer
 
