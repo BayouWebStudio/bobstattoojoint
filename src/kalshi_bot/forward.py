@@ -97,11 +97,63 @@ class ForwardLedger:
         )
 
 
+def _raw_candidates_from_events(client: KalshiClient, max_pages: int):
+    """Yield (event_ticker, category, market) from the open-events feed."""
+    cursor = None
+    for _ in range(max_pages):
+        params = {"limit": 200, "with_nested_markets": "true", "status": "open"}
+        if cursor:
+            params["cursor"] = cursor
+        data = client._request("GET", "/events", signed=False, params=params)
+        for e in data.get("events", []):
+            for m in (e.get("markets") or []):
+                yield e.get("event_ticker", ""), e.get("category", "?"), m
+        cursor = data.get("cursor")
+        if not cursor:
+            break
+
+
+def _raw_candidates_from_series(client: KalshiClient, series: list[str]):
+    """Yield (event_ticker, category, market) by querying specific series.
+
+    Used to reach high-frequency daily markets (crypto, temperature, indices)
+    that the generic events feed does not surface.
+    """
+    for ser in series:
+        cursor = None
+        for _ in range(3):
+            params = {"series_ticker": ser, "status": "open", "limit": 200}
+            if cursor:
+                params["cursor"] = cursor
+            data = client._request("GET", "/markets", signed=False, params=params)
+            for m in data.get("markets", []):
+                yield m.get("event_ticker", ser), ser, m
+            cursor = data.get("cursor")
+            if not cursor:
+                break
+
+
+def _within_horizon(close_time: str, now_iso: str | None, within_hours: float | None) -> bool:
+    if within_hours is None or now_iso is None:
+        return True
+    import datetime as dt
+
+    try:
+        ct = dt.datetime.fromisoformat(close_time.replace("Z", "+00:00"))
+        now = dt.datetime.fromisoformat(now_iso.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return False
+    return now < ct <= now + dt.timedelta(hours=within_hours)
+
+
 def scan_and_open(
     ledger: ForwardLedger,
     client: KalshiClient,
     *,
     today: str,
+    series: list[str] | None = None,
+    within_hours: float | None = None,
+    now_iso: str | None = None,
     min_yes_ask: int = 2,
     max_yes_ask: int = 15,
     min_volume: float = 1000.0,
@@ -111,52 +163,47 @@ def scan_and_open(
 ) -> list[Position]:
     """Scan live open markets for deep longshots and open paper NO positions.
 
-    At most one position per event (diversification), entries sorted by nearest
-    settlement first so the forward test produces results sooner. Skips markets
-    already in the ledger.
+    With ``series`` set, scans those (daily) series directly and can filter to
+    markets settling ``within_hours`` for a fast feedback loop; otherwise scans
+    the general open-events feed. At most one position per event
+    (diversification), nearest settlement first. Skips markets already held.
     """
     held = ledger.open_tickers() | {p.ticker for p in ledger.settled_positions()}
     seen_events: set[str] = set()
     candidates: list[Position] = []
-    cursor = None
 
-    for _ in range(max_pages):
-        params = {"limit": 200, "with_nested_markets": "true", "status": "open"}
-        if cursor:
-            params["cursor"] = cursor
-        data = client._request("GET", "/events", signed=False, params=params)
-        for e in data.get("events", []):
-            event_ticker = e.get("event_ticker", "")
-            for m in (e.get("markets") or []):
-                q = market_quote_cents(m)
-                if q is None:
-                    continue
-                yb, ya = q
-                try:
-                    vol = float(m.get("volume_fp") or 0)
-                except (TypeError, ValueError):
-                    vol = 0
-                if not (min_yes_ask <= ya <= max_yes_ask and yb >= 1 and vol >= min_volume):
-                    continue
-                if m["ticker"] in held or event_ticker in seen_events:
-                    continue
-                seen_events.add(event_ticker)
-                candidates.append(Position(
-                    ticker=m["ticker"],
-                    event_ticker=event_ticker,
-                    category=e.get("category", "?"),
-                    entry_yes_bid=yb,
-                    entry_yes_ask=ya,
-                    entry_no_cost=100 - yb,
-                    contracts=contracts,
-                    opened_date=today,
-                    close_time=m.get("close_time", ""),
-                ))
-        cursor = data.get("cursor")
-        if not cursor:
-            break
+    source = (
+        _raw_candidates_from_series(client, series) if series
+        else _raw_candidates_from_events(client, max_pages)
+    )
+    for event_ticker, category, m in source:
+        q = market_quote_cents(m)
+        if q is None:
+            continue
+        yb, ya = q
+        try:
+            vol = float(m.get("volume_fp") or 0)
+        except (TypeError, ValueError):
+            vol = 0
+        if not (min_yes_ask <= ya <= max_yes_ask and yb >= 1 and vol >= min_volume):
+            continue
+        if not _within_horizon(m.get("close_time", ""), now_iso, within_hours):
+            continue
+        if m["ticker"] in held or event_ticker in seen_events:
+            continue
+        seen_events.add(event_ticker)
+        candidates.append(Position(
+            ticker=m["ticker"],
+            event_ticker=event_ticker,
+            category=category,
+            entry_yes_bid=yb,
+            entry_yes_ask=ya,
+            entry_no_cost=100 - yb,
+            contracts=contracts,
+            opened_date=today,
+            close_time=m.get("close_time", ""),
+        ))
 
-    # Nearest settlement first, then take up to max_new.
     candidates.sort(key=lambda p: p.close_time or "9999")
     opened = candidates[:max_new]
     for p in opened:

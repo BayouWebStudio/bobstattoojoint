@@ -113,6 +113,11 @@ def build_parser() -> argparse.ArgumentParser:
     fwd.add_argument("--max-new", type=int, default=40, help="Max new positions per scan")
     fwd.add_argument("--contracts", type=int, default=10, help="Contracts per position")
     fwd.add_argument("--min-volume", type=float, default=1000.0, help="Min market volume")
+    fwd.add_argument("--daily", action="store_true",
+                     help="Target fast-settling daily series (crypto/temperature/indices)")
+    fwd.add_argument("--within-hours", type=float, default=None,
+                     help="Only open positions settling within this many hours")
+    fwd.add_argument("--series", nargs="*", default=[], help="Explicit series to scan")
 
     cal = sub.add_parser("calibrate",
                          help="Measure favorite-longshot bias on settled Kalshi markets")
@@ -286,11 +291,21 @@ def cmd_forward(args: argparse.Namespace) -> int:
     ledger = ForwardLedger(args.ledger)
     client = KalshiClient(load_settings())
 
+    # Liquid daily series that settle within ~24h (crypto, temperature, indices).
+    DAILY_SERIES = [
+        "KXETH", "KXETHD", "KXBTC", "KXBTCD",
+        "KXHIGHNY", "KXHIGHCHI", "KXHIGHMIA", "KXHIGHLAX", "KXHIGHAUS",
+        "KXHIGHDEN", "KXHIGHPHIL", "KXINXU", "KXINXD", "KXNASDAQ100U", "KXNASDAQ100D",
+    ]
+
     if args.fwd_action == "scan":
         today = dt.date.today().isoformat()
+        series = args.series or (DAILY_SERIES if args.daily else None)
+        now_iso = dt.datetime.now(dt.timezone.utc).isoformat() if args.within_hours else None
         opened = scan_and_open(
-            ledger, client, today=today, max_yes_ask=args.max_yes_ask,
-            max_new=args.max_new, contracts=args.contracts, min_volume=args.min_volume,
+            ledger, client, today=today, series=series, within_hours=args.within_hours,
+            now_iso=now_iso, max_yes_ask=args.max_yes_ask, max_new=args.max_new,
+            contracts=args.contracts, min_volume=args.min_volume,
         )
         print(f"Opened {len(opened)} new paper NO positions (fade-longshot).")
         for p in opened[:15]:

@@ -74,6 +74,34 @@ class FakeScanClient:
         return {"events": self._events, "cursor": None}
 
 
+class FakeSeriesClient:
+    def __init__(self, markets_by_series):
+        self._by_series = markets_by_series
+
+    def _request(self, method, path, *, signed, params=None):
+        ser = params.get("series_ticker")
+        return {"markets": self._by_series.get(ser, []), "cursor": None}
+
+
+def test_scan_series_with_within_hours_filter(tmp_path):
+    markets = {
+        "KXBTC": [
+            {"ticker": "BTC-SOON", "event_ticker": "KXBTC-D1", "yes_bid_dollars": "0.03",
+             "yes_ask_dollars": "0.05", "volume_fp": "9000",
+             "close_time": "2026-06-26T21:00:00Z"},          # ~9h out -> kept
+            {"ticker": "BTC-LATER", "event_ticker": "KXBTC-D2", "yes_bid_dollars": "0.03",
+             "yes_ask_dollars": "0.05", "volume_fp": "9000",
+             "close_time": "2026-07-10T21:00:00Z"},          # weeks out -> filtered
+        ]
+    }
+    led = ForwardLedger(str(tmp_path / "d.json"))
+    opened = scan_and_open(
+        led, FakeSeriesClient(markets), today="2026-06-26", series=["KXBTC"],
+        within_hours=30, now_iso="2026-06-26T12:00:00Z", min_volume=200,
+    )
+    assert [p.ticker for p in opened] == ["BTC-SOON"]
+
+
 def test_scan_opens_one_per_event_nearest_first(tmp_path):
     events = [{
         "event_ticker": "EV1", "category": "Politics",

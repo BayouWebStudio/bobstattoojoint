@@ -57,6 +57,10 @@ python -m kalshi_bot forward scan      # open paper NO positions on live longsho
 python -m kalshi_bot forward settle    # mark any now-settled positions (run over days)
 python -m kalshi_bot forward status    # running out-of-sample P&L
 
+# Fast feedback loop: target daily series (crypto/temperature) settling within ~24h
+python -m kalshi_bot forward scan --daily --within-hours 30 \
+    --ledger data/forward_ledger_daily.json
+
 # Run tests
 pytest
 ```
