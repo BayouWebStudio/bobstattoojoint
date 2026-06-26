@@ -14,6 +14,7 @@ import sys
 
 from .arb import run_arbitrage
 from .backtest import backtest, read_snapshots
+from .backtest.record import record_feed
 from .config import load_settings
 from .engine import Engine
 from .execution.live import LiveBroker
@@ -24,6 +25,8 @@ from .risk.guard import RiskGuard
 from .risk.sizing import Sizer
 from .strategy.arbitrage import ArbitrageDetector
 from .strategy.threshold import ThresholdStrategy
+from .venues.base import MockVenue, Quote
+from .xarb import run_cross_venue
 
 
 def _load_dotenv() -> None:
@@ -77,6 +80,22 @@ def build_parser() -> argparse.ArgumentParser:
     bt.add_argument("--ticks", type=int, default=500, help="Mock snapshots to generate")
     bt.add_argument("--threshold", type=float, default=2.0, help="Strategy threshold (cents)")
     bt.add_argument("--bankroll", type=float, default=1000.0, help="Bankroll in USD")
+
+    xarb = sub.add_parser("xarb", help="Cross-venue arbitrage (Kalshi vs Polymarket)")
+    xarb.add_argument("--mock", action="store_true", help="Run a synthetic two-venue demo")
+    xarb.add_argument("--event", default="event", help="Event name (live mode)")
+    xarb.add_argument("--kalshi-ticker", help="Kalshi market ticker (live mode)")
+    xarb.add_argument("--poly-yes-token", help="Polymarket YES token id (live mode)")
+    xarb.add_argument("--poly-no-token", help="Polymarket NO token id (live mode)")
+    xarb.add_argument("--threshold", type=int, default=1, help="Min guaranteed profit (cents)")
+    xarb.add_argument("--rounds", type=int, default=1, help="Number of polling rounds")
+
+    rec = sub.add_parser("record", help="Record live market snapshots to CSV for backtesting")
+    rec.add_argument("--out", required=True, help="Output CSV path")
+    rec.add_argument("--tickers", nargs="*", default=[], help="Market tickers to record")
+    rec.add_argument("--ticks", type=int, default=500, help="Number of feed iterations")
+    rec.add_argument("--ws", action="store_true", help="Use the WebSocket feed (live data)")
+    rec.add_argument("--mock", action="store_true", help="Record the synthetic feed (for testing)")
     return parser
 
 
@@ -154,6 +173,62 @@ def cmd_backtest(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_xarb(args: argparse.Namespace) -> int:
+    if args.mock or not args.kalshi_ticker:
+        # Synthetic demo: YES cheapest on Kalshi, NO cheapest on Polymarket.
+        kalshi = MockVenue("kalshi", {
+            "DEMO": Quote("kalshi", "DEMO", yes_bid=46, yes_ask=48, no_bid=52, no_ask=54),
+        })
+        poly = MockVenue("polymarket", {
+            "DEMO": Quote("polymarket", "DEMO", yes_bid=53, yes_ask=55, no_bid=45, no_ask=47),
+        })
+        links = [("DEMO", {"kalshi": "DEMO", "polymarket": "DEMO"})]
+        found = run_cross_venue(links, {"kalshi": kalshi, "polymarket": poly},
+                                threshold_cents=args.threshold)
+        print(f"Done. {len(found)} cross-venue opportunities found (demo).")
+        return 0
+
+    if not (args.poly_yes_token and args.poly_no_token):
+        print("Live xarb requires --poly-yes-token and --poly-no-token.", file=sys.stderr)
+        return 2
+
+    from .venues.kalshi_venue import KalshiVenue
+    from .venues.polymarket import PolymarketClient, PolymarketVenue
+
+    settings = load_settings()
+    kalshi = KalshiVenue(KalshiClient(settings))
+    poly = PolymarketVenue(
+        PolymarketClient(),
+        {args.event: (args.poly_yes_token, args.poly_no_token)},
+    )
+    links = [(args.event, {"kalshi": args.kalshi_ticker, "polymarket": args.event})]
+    found = run_cross_venue(links, {"kalshi": kalshi, "polymarket": poly},
+                            threshold_cents=args.threshold, rounds=args.rounds)
+    print(f"Done. {len(found)} cross-venue opportunities found.")
+    return 0
+
+
+def cmd_record(args: argparse.Namespace) -> int:
+    if args.mock:
+        feed = MockFeed().stream(max_ticks=args.ticks)
+    else:
+        settings = load_settings()
+        if not settings.has_credentials:
+            print("Recording live data requires API credentials (see .env.example).",
+                  file=sys.stderr)
+            return 2
+        if not args.tickers:
+            print("record requires --tickers TICKER [TICKER ...] (or --mock).", file=sys.stderr)
+            return 2
+        feed = _live_feed(settings, args.tickers, args.ticks, args.ws)
+
+    count = 0
+    for _ in record_feed(feed, args.out):
+        count += 1
+    print(f"Recorded {count} snapshots to {args.out}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     _load_dotenv()
@@ -164,6 +239,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_arb(args)
     if args.command == "backtest":
         return cmd_backtest(args)
+    if args.command == "record":
+        return cmd_record(args)
+    if args.command == "xarb":
+        return cmd_xarb(args)
     return 1
 
 

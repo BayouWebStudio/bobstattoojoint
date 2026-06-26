@@ -33,6 +33,13 @@ python -m kalshi_bot run --mock
 # Scan a mutually-exclusive event for partition arbitrage (synthetic demo):
 python -m kalshi_bot arb --mock
 
+# Cross-venue arbitrage between Kalshi and Polymarket (synthetic demo):
+python -m kalshi_bot xarb --mock
+
+# Record live market data to CSV, then backtest over the real history:
+python -m kalshi_bot record --tickers KXMARKET --out data.csv   # needs API keys
+python -m kalshi_bot backtest --csv data.csv
+
 # Backtest a strategy over synthetic data and print performance metrics:
 python -m kalshi_bot backtest --mock --ticks 400
 
@@ -84,6 +91,11 @@ src/kalshi_bot/
     base.py            # Strategy interface + Signal type
     threshold.py       # example: mean-reversion threshold strategy
     arbitrage.py       # partition arbitrage detector (mutually-exclusive events)
+    crossvenue.py      # cross-venue arbitrage detector (cheapest YES + cheapest NO)
+  venues/
+    base.py            # Quote + Venue protocol (normalizes venues to cents)
+    kalshi_venue.py    # Kalshi as a Venue
+    polymarket.py      # Polymarket CLOB client + Venue (read-only)
   risk/
     sizing.py          # Kelly-criterion position sizing
     guard.py           # risk guard / kill-switch (loss + position limits, STOP file)
@@ -91,8 +103,9 @@ src/kalshi_bot/
     record.py          # record/replay snapshots as CSV
     runner.py          # backtest + metrics (return, drawdown, win rate, Sharpe)
   engine.py            # main loop: feed -> strategy -> risk -> broker
-  arb.py               # multi-leg arbitrage runner
-  cli.py               # command-line entry point (run / arb / backtest)
+  arb.py               # multi-leg (partition) arbitrage runner
+  xarb.py              # cross-venue arbitrage runner
+  cli.py               # CLI entry point (run / arb / xarb / backtest / record)
 ```
 
 ## Roadmap
@@ -104,8 +117,10 @@ src/kalshi_bot/
 - [x] Cross-market arbitrage detection (mutually-exclusive partitions)
 - [x] Backtesting with performance metrics
 - [x] Live execution with kill-switch
-- [ ] Cross-venue arbitrage (Kalshi vs. Polymarket)
-- [ ] Persist live-recorded data for realistic backtests
+- [x] Cross-venue arbitrage detection (Kalshi vs. Polymarket)
+- [x] Record live data to CSV for realistic backtests
+- [ ] Cross-venue *execution* (needs funded accounts on both venues)
+- [ ] Polymarket order placement (EIP-712 signing + Polygon settlement)
 - [ ] Richer fill model (partial fills, queue position, fees)
 
 ## Disclaimer
