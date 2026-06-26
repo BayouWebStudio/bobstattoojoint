@@ -36,6 +36,9 @@ python -m kalshi_bot arb --mock
 # Cross-venue arbitrage between Kalshi and Polymarket (synthetic demo):
 python -m kalshi_bot xarb --mock
 
+# ...and actually execute both legs on paper (with leg-risk unwind):
+python -m kalshi_bot xarb --mock --execute --contracts 100
+
 # Record live market data to CSV, then backtest over the real history:
 python -m kalshi_bot record --tickers KXMARKET --out data.csv   # needs API keys
 python -m kalshi_bot backtest --csv data.csv
@@ -85,6 +88,7 @@ src/kalshi_bot/
   execution/
     base.py            # Broker protocol + Fill (paper & live share it)
     live.py            # LiveBroker: routes orders to the Kalshi API
+    crossvenue.py      # CrossVenueExecutor: two-leg execution + leg-risk unwind
   paper/
     broker.py          # paper broker: simulates fills, tracks P&L
   strategy/
@@ -119,8 +123,9 @@ src/kalshi_bot/
 - [x] Live execution with kill-switch
 - [x] Cross-venue arbitrage detection (Kalshi vs. Polymarket)
 - [x] Record live data to CSV for realistic backtests
-- [ ] Cross-venue *execution* (needs funded accounts on both venues)
-- [ ] Polymarket order placement (EIP-712 signing + Polygon settlement)
+- [x] Cross-venue execution with leg-risk unwind (paper)
+- [ ] Polymarket order placement (EIP-712 signing + Polygon settlement) — the
+      last piece needed for *live* cross-venue execution
 - [ ] Richer fill model (partial fills, queue position, fees)
 
 ## Disclaimer

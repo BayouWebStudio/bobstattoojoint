@@ -24,6 +24,10 @@ def test_xarb_subcommand_mock():
     assert main(["xarb", "--mock"]) == 0
 
 
+def test_xarb_execute_subcommand_mock():
+    assert main(["xarb", "--mock", "--execute", "--contracts", "10"]) == 0
+
+
 def test_live_requires_confirmation():
     # Missing --i-understand-live-risk -> refuse with exit code 2.
     assert main(["run", "--live", "--tickers", "FOO"]) == 2

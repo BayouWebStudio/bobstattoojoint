@@ -17,6 +17,7 @@ from .backtest import backtest, read_snapshots
 from .backtest.record import record_feed
 from .config import load_settings
 from .engine import Engine
+from .execution.crossvenue import CrossVenueExecutor
 from .execution.live import LiveBroker
 from .kalshi.client import KalshiClient
 from .kalshi.feed import MockEventFeed, MockFeed, RestPollingFeed
@@ -83,6 +84,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     xarb = sub.add_parser("xarb", help="Cross-venue arbitrage (Kalshi vs Polymarket)")
     xarb.add_argument("--mock", action="store_true", help="Run a synthetic two-venue demo")
+    xarb.add_argument("--execute", action="store_true",
+                      help="Paper-execute both legs of each opportunity")
+    xarb.add_argument("--contracts", type=int, default=1, help="Contracts per arb set")
     xarb.add_argument("--event", default="event", help="Event name (live mode)")
     xarb.add_argument("--kalshi-ticker", help="Kalshi market ticker (live mode)")
     xarb.add_argument("--poly-yes-token", help="Polymarket YES token id (live mode)")
@@ -173,7 +177,23 @@ def cmd_backtest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _build_executor(args: argparse.Namespace) -> CrossVenueExecutor | None:
+    """A paper executor (one paper broker per venue) when --execute is set.
+
+    Live cross-venue execution is intentionally not wired: Polymarket order
+    placement is not implemented, so executing for real would fill only the
+    Kalshi leg and leave the other naked.
+    """
+    if not args.execute:
+        return None
+    brokers = {"kalshi": PaperBroker(), "polymarket": PaperBroker()}
+    guard = RiskGuard(stop_file="STOP")
+    return CrossVenueExecutor(brokers=brokers, guard=guard)
+
+
 def cmd_xarb(args: argparse.Namespace) -> int:
+    executor = _build_executor(args)
+
     if args.mock or not args.kalshi_ticker:
         # Synthetic demo: YES cheapest on Kalshi, NO cheapest on Polymarket.
         kalshi = MockVenue("kalshi", {
@@ -183,28 +203,30 @@ def cmd_xarb(args: argparse.Namespace) -> int:
             "DEMO": Quote("polymarket", "DEMO", yes_bid=53, yes_ask=55, no_bid=45, no_ask=47),
         })
         links = [("DEMO", {"kalshi": "DEMO", "polymarket": "DEMO"})]
-        found = run_cross_venue(links, {"kalshi": kalshi, "polymarket": poly},
-                                threshold_cents=args.threshold)
-        print(f"Done. {len(found)} cross-venue opportunities found (demo).")
-        return 0
+        venues = {"kalshi": kalshi, "polymarket": poly}
+    else:
+        if not (args.poly_yes_token and args.poly_no_token):
+            print("Live xarb requires --poly-yes-token and --poly-no-token.", file=sys.stderr)
+            return 2
+        from .venues.kalshi_venue import KalshiVenue
+        from .venues.polymarket import PolymarketClient, PolymarketVenue
 
-    if not (args.poly_yes_token and args.poly_no_token):
-        print("Live xarb requires --poly-yes-token and --poly-no-token.", file=sys.stderr)
-        return 2
+        settings = load_settings()
+        kalshi = KalshiVenue(KalshiClient(settings))
+        poly = PolymarketVenue(
+            PolymarketClient(),
+            {args.event: (args.poly_yes_token, args.poly_no_token)},
+        )
+        links = [(args.event, {"kalshi": args.kalshi_ticker, "polymarket": args.event})]
+        venues = {"kalshi": kalshi, "polymarket": poly}
 
-    from .venues.kalshi_venue import KalshiVenue
-    from .venues.polymarket import PolymarketClient, PolymarketVenue
-
-    settings = load_settings()
-    kalshi = KalshiVenue(KalshiClient(settings))
-    poly = PolymarketVenue(
-        PolymarketClient(),
-        {args.event: (args.poly_yes_token, args.poly_no_token)},
+    found = run_cross_venue(
+        links, venues, executor=executor, contracts=args.contracts,
+        threshold_cents=args.threshold, rounds=args.rounds,
     )
-    links = [(args.event, {"kalshi": args.kalshi_ticker, "polymarket": args.event})]
-    found = run_cross_venue(links, {"kalshi": kalshi, "polymarket": poly},
-                            threshold_cents=args.threshold, rounds=args.rounds)
     print(f"Done. {len(found)} cross-venue opportunities found.")
+    if executor is not None:
+        print(f"Execution (paper): {executor.summary()}")
     return 0
 
 

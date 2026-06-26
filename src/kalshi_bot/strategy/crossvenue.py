@@ -24,8 +24,10 @@ from ..venues.base import Quote
 class CrossVenueArb:
     event: str
     yes_venue: str
+    yes_market_id: str
     yes_price_cents: int
     no_venue: str
+    no_market_id: str
     no_price_cents: int
     cost_cents: int
     profit_cents: int
@@ -62,8 +64,10 @@ def find_cross_venue_arb(
     return CrossVenueArb(
         event=event,
         yes_venue=best_yes.venue,
+        yes_market_id=best_yes.market_id,
         yes_price_cents=best_yes.yes_ask,
         no_venue=best_no.venue,
+        no_market_id=best_no.market_id,
         no_price_cents=best_no.no_ask,
         cost_cents=cost,
         profit_cents=profit,
