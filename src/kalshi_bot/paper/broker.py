@@ -10,21 +10,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from ..execution.base import Fill
+
 
 @dataclass
 class Position:
     contracts: int = 0  # signed: + long YES, - short YES
     avg_price_cents: float = 0.0  # average entry price of the open position
-
-
-@dataclass
-class Fill:
-    ticker: str
-    side: str
-    action: str
-    contracts: int
-    price_cents: int
-    realized_pnl_usd: float
 
 
 @dataclass

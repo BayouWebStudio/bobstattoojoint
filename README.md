@@ -27,12 +27,32 @@ automated strategy.
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-# Run a paper-trading demo against a built-in mock market feed (no keys needed):
-python -m kalshi_bot run --paper --mock
+# Paper-trade a strategy against a built-in mock feed (no keys needed):
+python -m kalshi_bot run --mock
+
+# Scan a mutually-exclusive event for partition arbitrage (synthetic demo):
+python -m kalshi_bot arb --mock
+
+# Backtest a strategy over synthetic data and print performance metrics:
+python -m kalshi_bot backtest --mock --ticks 400
 
 # Run tests
 pytest
 ```
+
+### Live trading (opt-in, guarded)
+
+Live order placement is gated behind an explicit confirmation flag, requires API
+credentials, and runs with the risk guard / kill-switch active:
+
+```bash
+python -m kalshi_bot run --live --i-understand-live-risk \
+    --tickers KXSOMEMARKET --ws
+```
+
+While live, **create a file named `STOP`** in the working directory to latch the
+kill-switch and halt trading immediately. The guard also halts automatically on
+the daily-loss limit (`MAX_DAILY_LOSS_USD`).
 
 ## Configuration
 
@@ -53,16 +73,26 @@ src/kalshi_bot/
   kalshi/
     auth.py            # RSA-PSS request signing
     client.py          # REST client (markets, order book, orders, balance)
-    feed.py            # market-data feed (live REST poller + mock feed)
+    feed.py            # REST-polling feed + offline mock feeds
+    ws.py              # WebSocket feed + testable OrderBookState
+  execution/
+    base.py            # Broker protocol + Fill (paper & live share it)
+    live.py            # LiveBroker: routes orders to the Kalshi API
   paper/
-    broker.py          # paper broker: simulates fills against the order book
+    broker.py          # paper broker: simulates fills, tracks P&L
   strategy/
     base.py            # Strategy interface + Signal type
     threshold.py       # example: mean-reversion threshold strategy
+    arbitrage.py       # partition arbitrage detector (mutually-exclusive events)
   risk/
-    sizing.py          # Kelly-criterion position sizing + risk limits
+    sizing.py          # Kelly-criterion position sizing
+    guard.py           # risk guard / kill-switch (loss + position limits, STOP file)
+  backtest/
+    record.py          # record/replay snapshots as CSV
+    runner.py          # backtest + metrics (return, drawdown, win rate, Sharpe)
   engine.py            # main loop: feed -> strategy -> risk -> broker
-  cli.py               # command-line entry point
+  arb.py               # multi-leg arbitrage runner
+  cli.py               # command-line entry point (run / arb / backtest)
 ```
 
 ## Roadmap
@@ -70,10 +100,13 @@ src/kalshi_bot/
 - [x] Paper-trading engine with mock feed
 - [x] Kalshi REST client with API-key auth
 - [x] Kelly sizing + risk limits
-- [ ] WebSocket live feed (lower latency than REST polling)
-- [ ] Cross-market arbitrage detection
-- [ ] Backtesting over historical data
-- [ ] Live execution with kill-switch
+- [x] WebSocket live feed (lower latency than REST polling)
+- [x] Cross-market arbitrage detection (mutually-exclusive partitions)
+- [x] Backtesting with performance metrics
+- [x] Live execution with kill-switch
+- [ ] Cross-venue arbitrage (Kalshi vs. Polymarket)
+- [ ] Persist live-recorded data for realistic backtests
+- [ ] Richer fill model (partial fills, queue position, fees)
 
 ## Disclaimer
 

@@ -1,4 +1,10 @@
-"""Command-line entry point."""
+"""Command-line entry point.
+
+Subcommands:
+  run        paper- or live-trade a strategy against a feed
+  arb        scan a mutually-exclusive event for partition arbitrage
+  backtest   replay recorded/synthetic snapshots through a strategy
+"""
 
 from __future__ import annotations
 
@@ -6,12 +12,17 @@ import argparse
 import logging
 import sys
 
+from .arb import run_arbitrage
+from .backtest import backtest, read_snapshots
 from .config import load_settings
 from .engine import Engine
+from .execution.live import LiveBroker
 from .kalshi.client import KalshiClient
-from .kalshi.feed import MockFeed, RestPollingFeed
+from .kalshi.feed import MockEventFeed, MockFeed, RestPollingFeed
 from .paper.broker import PaperBroker
+from .risk.guard import RiskGuard
 from .risk.sizing import Sizer
+from .strategy.arbitrage import ArbitrageDetector
 from .strategy.threshold import ThresholdStrategy
 
 
@@ -31,31 +42,73 @@ def _load_dotenv() -> None:
         os.environ.setdefault(key.strip(), value.strip())
 
 
+def _live_feed(settings, tickers, ticks, use_ws):
+    if use_ws:
+        from .kalshi.ws import WebSocketFeed
+
+        return WebSocketFeed(settings, tickers).stream(max_messages=ticks)
+    client = KalshiClient(settings)
+    return RestPollingFeed(client, tickers).stream(max_ticks=ticks)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="kalshi-bot", description="Kalshi trading bot")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    run = sub.add_parser("run", help="Run the bot")
-    run.add_argument("--paper", action="store_true", default=True, help="Paper mode (default)")
-    run.add_argument("--live", action="store_true", help="Enable live execution (NOT IMPLEMENTED)")
+    run = sub.add_parser("run", help="Run a strategy (paper by default)")
+    run.add_argument("--live", action="store_true", help="Place REAL orders (requires confirmation)")
+    run.add_argument("--i-understand-live-risk", action="store_true",
+                     help="Required confirmation flag for --live")
     run.add_argument("--mock", action="store_true", help="Use the offline mock feed")
+    run.add_argument("--ws", action="store_true", help="Use the WebSocket feed (live data)")
     run.add_argument("--tickers", nargs="*", default=[], help="Market tickers for the live feed")
     run.add_argument("--ticks", type=int, default=100, help="Number of feed iterations")
-    run.add_argument("--bankroll", type=float, default=1000.0, help="Paper bankroll in USD")
+    run.add_argument("--bankroll", type=float, default=1000.0, help="Bankroll in USD")
+
+    arb = sub.add_parser("arb", help="Scan a mutually-exclusive event for arbitrage")
+    arb.add_argument("--mock", action="store_true", help="Use the synthetic event feed")
+    arb.add_argument("--tickers", nargs="*", default=[], help="Tickers that partition one event")
+    arb.add_argument("--ticks", type=int, default=40, help="Number of feed iterations")
+    arb.add_argument("--threshold", type=int, default=1, help="Min guaranteed profit (cents)")
+
+    bt = sub.add_parser("backtest", help="Backtest a strategy over snapshots")
+    bt.add_argument("--csv", help="CSV of recorded snapshots (see backtest.record)")
+    bt.add_argument("--mock", action="store_true", help="Generate synthetic data instead")
+    bt.add_argument("--ticks", type=int, default=500, help="Mock snapshots to generate")
+    bt.add_argument("--threshold", type=float, default=2.0, help="Strategy threshold (cents)")
+    bt.add_argument("--bankroll", type=float, default=1000.0, help="Bankroll in USD")
     return parser
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    if args.live:
-        print("Live execution is intentionally not implemented yet. Use --paper.", file=sys.stderr)
-        return 2
-
     settings = load_settings()
     strategy = ThresholdStrategy()
-    broker = PaperBroker(starting_cash_usd=args.bankroll)
     sizer = Sizer(bankroll_usd=args.bankroll, max_position_usd=settings.max_position_usd)
-    engine = Engine(strategy=strategy, sizer=sizer, broker=broker)
 
+    if args.live:
+        if not args.i_understand_live_risk:
+            print("Refusing to trade live without --i-understand-live-risk.", file=sys.stderr)
+            return 2
+        if not settings.has_credentials:
+            print("Live trading requires API credentials (see .env.example).", file=sys.stderr)
+            return 2
+        if not args.tickers:
+            print("Live trading requires --tickers.", file=sys.stderr)
+            return 2
+        client = KalshiClient(settings)
+        broker = LiveBroker(client)
+        guard = RiskGuard(
+            max_daily_loss_usd=settings.max_daily_loss_usd,
+            max_position_contracts=int(settings.max_position_usd),  # conservative proxy
+            stop_file="STOP",
+        )
+        feed = _live_feed(settings, args.tickers, args.ticks, args.ws)
+        print("⚠️  LIVE trading enabled. Touch a file named 'STOP' to halt.", file=sys.stderr)
+        Engine(strategy=strategy, sizer=sizer, broker=broker, guard=guard).run(feed)
+        return 0
+
+    # Paper mode.
+    broker = PaperBroker(starting_cash_usd=args.bankroll)
     if args.mock or not settings.has_credentials:
         if not args.mock:
             print("No API credentials found; falling back to the mock feed.", file=sys.stderr)
@@ -64,10 +117,40 @@ def cmd_run(args: argparse.Namespace) -> int:
         if not args.tickers:
             print("Live feed requires --tickers TICKER [TICKER ...]", file=sys.stderr)
             return 2
+        feed = _live_feed(settings, args.tickers, args.ticks, args.ws)
+    Engine(strategy=strategy, sizer=sizer, broker=broker).run(feed)
+    return 0
+
+
+def cmd_arb(args: argparse.Namespace) -> int:
+    broker = PaperBroker()
+    if args.mock or not args.tickers:
+        feed = MockEventFeed().stream(max_ticks=args.ticks)
+        groups = {MockEventFeed.EVENT: list(MockEventFeed.TICKERS)}
+    else:
+        settings = load_settings()
         client = KalshiClient(settings)
         feed = RestPollingFeed(client, args.tickers).stream(max_ticks=args.ticks)
+        groups = {"event": list(args.tickers)}
 
-    engine.run(feed)
+    detector = ArbitrageDetector(groups, threshold_cents=args.threshold)
+    taken = run_arbitrage(feed, detector, broker)
+    print(f"Done. {len(taken)} arbitrage opportunities taken (paper).")
+    return 0
+
+
+def cmd_backtest(args: argparse.Namespace) -> int:
+    if args.csv:
+        snapshots = read_snapshots(args.csv)
+    elif args.mock:
+        snapshots = MockFeed().stream(max_ticks=args.ticks)
+    else:
+        print("backtest requires --csv PATH or --mock.", file=sys.stderr)
+        return 2
+
+    strategy = ThresholdStrategy(threshold_cents=args.threshold)
+    report = backtest(strategy, snapshots, bankroll_usd=args.bankroll)
+    print(report)
     return 0
 
 
@@ -77,6 +160,10 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "run":
         return cmd_run(args)
+    if args.command == "arb":
+        return cmd_arb(args)
+    if args.command == "backtest":
+        return cmd_backtest(args)
     return 1
 
 

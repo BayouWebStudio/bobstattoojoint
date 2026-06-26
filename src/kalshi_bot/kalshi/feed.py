@@ -108,3 +108,34 @@ class MockFeed:
                 ts=float(ticks),
             )
             ticks += 1
+
+
+class MockEventFeed:
+    """Synthetic feed for a mutually-exclusive 3-outcome event (for arb demos).
+
+    The outcomes' fair YES prices sum to 100c. Most ticks the book is "tight"
+    (asks sum to > 100, no arb). Periodically a dislocation makes the combined
+    ask dip below 100c, creating a detectable underpriced arbitrage.
+    """
+
+    EVENT = "MOCK-EVENT"
+    TICKERS = ("MOCK-EVENT-A", "MOCK-EVENT-B", "MOCK-EVENT-C")
+
+    def __init__(self, fair: tuple[int, int, int] = (45, 35, 20), half_spread: int = 1):
+        self._fair = fair
+        self._half = half_spread
+
+    def stream(self, max_ticks: int | None = 40) -> Iterator[MarketSnapshot]:
+        ticks = 0
+        while max_ticks is None or ticks < max_ticks:
+            # Every 5th tick, dislocate outcome A downward to open an arb.
+            dislocate = -4 if ticks % 5 == 0 else 0
+            for i, ticker in enumerate(self.TICKERS):
+                mid = self._fair[i] + (dislocate if i == 0 else 0)
+                yield MarketSnapshot(
+                    ticker=ticker,
+                    yes_bid=mid - self._half,
+                    yes_ask=mid + self._half,
+                    ts=float(ticks),
+                )
+            ticks += 1
