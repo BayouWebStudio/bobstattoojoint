@@ -119,6 +119,12 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Only open positions settling within this many hours")
     fwd.add_argument("--series", nargs="*", default=[], help="Explicit series to scan")
 
+    wx = sub.add_parser("weather",
+                        help="Forecast-vs-market value bets on Kalshi high-temp markets")
+    wx.add_argument("--cities", nargs="*", default=[],
+                    help="Series to scan (default: all weather cities)")
+    wx.add_argument("--min-edge", type=float, default=3.0, help="Min EV per contract (cents)")
+
     cal = sub.add_parser("calibrate",
                          help="Measure favorite-longshot bias on settled Kalshi markets")
     cal.add_argument("--series", nargs="*", default=[],
@@ -329,6 +335,35 @@ def cmd_forward(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_weather(args: argparse.Namespace) -> int:
+    from .weather.scan import scan_city
+    from .weather.stations import STATIONS
+
+    client = KalshiClient(load_settings())
+    cities = args.cities or list(STATIONS.keys())
+    all_bets = []
+    for series in cities:
+        try:
+            scan = scan_city(client, series, min_edge_cents=args.min_edge)
+        except Exception as exc:  # noqa: BLE001
+            print(f"{series}: error ({exc})", file=sys.stderr)
+            continue
+        if scan is None:
+            continue
+        fc = scan.forecast
+        print(f"\n{scan.station} — {scan.date}  forecast {fc.mean_f:.1f}F "
+              f"(sigma {fc.sigma_f:.1f}, {fc.n_models} models)  "
+              f"[model total {scan.model_total*100:.0f}%]")
+        for r in scan.rows:
+            flag = f"  <== {r.bet.side.upper()} EV{r.bet.edge_cents:+.1f}c" if r.bet else ""
+            print(f"  {r.subtitle:16} model {r.model_prob*100:5.1f}%  "
+                  f"mkt {r.yes_bid:2}/{r.yes_ask:<2}c{flag}")
+        all_bets.extend(scan.value_bets())
+
+    print(f"\n{len(all_bets)} value bets found (min edge {args.min_edge}c after fees).")
+    return 0
+
+
 def cmd_calibrate(args: argparse.Namespace) -> int:
     from .research.calibration import calibration_table, fade_longshot_backtest
     from .research.collect import collect_settled_samples
@@ -400,6 +435,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_calibrate(args)
     if args.command == "forward":
         return cmd_forward(args)
+    if args.command == "weather":
+        return cmd_weather(args)
     return 1
 
 

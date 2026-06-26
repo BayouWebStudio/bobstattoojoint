@@ -78,3 +78,42 @@ the engine like any other strategy. Reproduce the analysis with:
 ```bash
 python -m kalshi_bot calibrate --max-yes-ask 15 --entry mid
 ```
+
+## Weather: a forecast model, and an honest negative result
+
+Settled-market calibration showed the fade-longshot edge is cleanest in
+**weather** (thin tails, no blow-up risk) — so we built a real forecast model to
+try to turn the blind bias into model-driven *value* betting:
+
+- `weather/` pulls live daily-high forecasts from **Open-Meteo** (free, no key)
+  across three numerical models (GFS, ECMWF, ICON), using the model mean as the
+  estimate and the model spread (floored) as uncertainty.
+- Each Kalshi temperature range is priced with a Normal CDF; probabilities over
+  an event partition sum to 1 and peak at the forecast. The model is
+  **well-calibrated** and matches the market on central ranges.
+
+Run it: `python -m kalshi_bot weather`.
+
+**But the live test did not find a real edge — and that is the important
+result.** Two things surfaced:
+
+1. **Same-day markets:** the apparent "edges" were huge (60–90c) because the
+   market sees *intraday observations* the morning forecast does not — by
+   afternoon the day's high is largely realized. The market isn't mispriced; our
+   forecast is simply less informed. (Two bugs were fixed along the way: the
+   weather date must come from the *ticker*, not the close time which is the next
+   morning; and a liquidity gate is required so stale one-sided quotes don't
+   produce phantom edges.)
+2. **At 1-day lead**, model and market still disagree — but **disagreement is not
+   an edge.** The market is a liquid aggregator that also uses public forecasts.
+   A naive `Normal(3-model mean, sigma=2.5)` may well be *worse* than the market
+   (wrong sigma, station microclimate, model bias). We have **no evidence the
+   model beats the market**, so these are not tradeable signals.
+
+**Verdict:** the forecast tooling is sound and is a useful diagnostic, but a
+weather value edge is *unproven*. The honest next experiment is a **historical
+forecast backtest**: using Open-Meteo's archived forecasts, compare the model's
+day-ahead probabilities to the market price *and* the settled outcome over many
+past days, and measure whether model-implied bets actually beat the market
+out-of-sample. Only then is there a real edge — we do not deploy on
+model-vs-market disagreement alone.

@@ -52,6 +52,9 @@ python -m kalshi_bot backtest --series KXWARMING --kalshi-ticker KXWARMING-50 --
 # Measure the favorite-longshot edge on real settled markets (see docs/STRATEGY.md):
 python -m kalshi_bot calibrate --max-yes-ask 15 --entry mid
 
+# Weather: live forecast (Open-Meteo) vs market for high-temp markets (diagnostic)
+python -m kalshi_bot weather --cities KXHIGHNY KXHIGHCHI
+
 # Forward (out-of-sample) paper test: open live positions now, settle them later
 python -m kalshi_bot forward scan      # open paper NO positions on live longshots
 python -m kalshi_bot forward settle    # mark any now-settled positions (run over days)
@@ -187,6 +190,14 @@ entered at the conservative cross-the-spread price). Run `forward settle` over
 the coming days/weeks as those markets resolve to accumulate genuine
 out-of-sample results — this is the real test of the edge, and we evaluate it
 before investing in a passive-execution layer.
+
+**Weather forecasting (honest negative result).** We built a live forecast model
+(`weather/`, Open-Meteo GFS/ECMWF/ICON) to price temperature markets directly.
+It is well-calibrated, but live testing found **no demonstrated edge**: on
+same-day markets the model is *less* informed than the market (which sees
+intraday data), and at lead time, model-vs-market disagreement is not proof the
+model is right. See [docs/STRATEGY.md](docs/STRATEGY.md) — the next step is a
+historical-forecast backtest before trusting any weather value signal.
 
 ## Disclaimer
 
