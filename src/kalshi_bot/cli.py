@@ -118,6 +118,12 @@ def build_parser() -> argparse.ArgumentParser:
     fwd.add_argument("--within-hours", type=float, default=None,
                      help="Only open positions settling within this many hours")
     fwd.add_argument("--series", nargs="*", default=[], help="Explicit series to scan")
+    fwd.add_argument("--weather", action="store_true",
+                     help="Forecast-filtered fade-longshot on weather markets (the double edge)")
+    fwd.add_argument("--filter-prob", type=float, default=0.07,
+                     help="Fade only if forecast model_prob <= this (weather mode)")
+    fwd.add_argument("--lead-min", type=int, default=2, help="Min lead days (weather mode)")
+    fwd.add_argument("--lead-max", type=int, default=3, help="Max lead days (weather mode)")
 
     wx = sub.add_parser("weather",
                         help="Forecast-vs-market value bets on Kalshi high-temp markets")
@@ -297,7 +303,7 @@ def cmd_xarb(args: argparse.Namespace) -> int:
 def cmd_forward(args: argparse.Namespace) -> int:
     import datetime as dt
 
-    from .forward import ForwardLedger, scan_and_open, settle_open
+    from .forward import ForwardLedger, scan_and_open, scan_weather_filtered, settle_open
 
     ledger = ForwardLedger(args.ledger)
     client = KalshiClient(load_settings())
@@ -311,6 +317,20 @@ def cmd_forward(args: argparse.Namespace) -> int:
 
     if args.fwd_action == "scan":
         today = dt.date.today().isoformat()
+        if args.weather:
+            opened = scan_weather_filtered(
+                ledger, client, today=today, min_lead_days=args.lead_min,
+                max_lead_days=args.lead_max, max_yes_ask=args.max_yes_ask,
+                filter_prob=args.filter_prob, min_volume=args.min_volume,
+                contracts=args.contracts, max_new=args.max_new,
+            )
+            print(f"Opened {len(opened)} forecast-filtered weather fades "
+                  f"(model_prob <= {args.filter_prob}).")
+            for p in opened[:20]:
+                print(f"  {p.ticker[:40]:42} NO@{p.entry_no_cost}c "
+                      f"model {p.model_prob*100:.1f}% wx={p.weather_date} close={p.close_time[:10]}")
+            print(f"\n{ledger.summary()}")
+            return 0
         series = args.series or (DAILY_SERIES if args.daily else None)
         now_iso = dt.datetime.now(dt.timezone.utc).isoformat() if args.within_hours else None
         opened = scan_and_open(

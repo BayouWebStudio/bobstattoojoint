@@ -46,6 +46,9 @@ class Position:
     status: str = "open"            # "open" | "settled"
     result: str | None = None       # "yes" | "no"
     realized_pnl_cents: float | None = None
+    # Set for forecast-filtered weather fades:
+    model_prob: float | None = None
+    weather_date: str | None = None
 
 
 def market_quote_cents(m: dict) -> tuple[int, int] | None:
@@ -203,6 +206,107 @@ def scan_and_open(
             opened_date=today,
             close_time=m.get("close_time", ""),
         ))
+
+    candidates.sort(key=lambda p: p.close_time or "9999")
+    opened = candidates[:max_new]
+    for p in opened:
+        ledger.add(p)
+    if opened:
+        ledger.save()
+    return opened
+
+
+def scan_weather_filtered(
+    ledger: ForwardLedger,
+    client: KalshiClient,
+    *,
+    today: str,
+    min_lead_days: int = 2,
+    max_lead_days: int = 3,
+    max_yes_ask: int = 15,
+    filter_prob: float = 0.07,
+    sigma_floor: float = 3.5,
+    min_volume: float = 200.0,
+    contracts: int = 10,
+    max_new: int = 20,
+    session=None,
+) -> list[Position]:
+    """Open forecast-filtered fade-longshot positions on weather markets.
+
+    For events settling ``min_lead_days``-``max_lead_days`` out, fetch the live
+    forecast for the weather date and, in each event, fade (buy NO) the deepest
+    longshot only if the forecast independently says it is unlikely
+    (``model_prob <= filter_prob``). One position per event for diversification.
+    """
+    import datetime as dt
+    from collections import defaultdict
+
+    import requests
+
+    from .weather.forecast import fetch_forecast
+    from .weather.model import parse_range, range_probability
+    from .weather.scan import weather_date_from_ticker
+    from .weather.stations import STATIONS
+
+    session = session or requests.Session()
+    held = ledger.open_tickers() | {p.ticker for p in ledger.settled_positions()}
+    today_d = dt.date.fromisoformat(today)
+    lo, hi = today_d + dt.timedelta(days=min_lead_days), today_d + dt.timedelta(days=max_lead_days)
+
+    candidates: list[Position] = []
+    for series, station in STATIONS.items():
+        try:
+            markets = client.get_markets(series_ticker=series, status="open", limit=200)
+        except Exception:
+            continue
+        events: dict[str, list[dict]] = defaultdict(list)
+        for m in markets:
+            events[m.get("event_ticker", "")].append(m)
+
+        for event_ticker, ms in events.items():
+            wd = weather_date_from_ticker(event_ticker)
+            if not wd:
+                continue
+            try:
+                wd_date = dt.date.fromisoformat(wd)
+            except ValueError:
+                continue
+            if not (lo <= wd_date <= hi):
+                continue
+            try:
+                forecast = fetch_forecast(station, wd, session=session, sigma_floor=sigma_floor)
+            except Exception:
+                forecast = None
+            if forecast is None:
+                continue
+
+            # Among qualifying longshots in this event, fade the deepest one.
+            best: Position | None = None
+            for m in ms:
+                rng = parse_range(m.get("yes_sub_title", ""))
+                q = market_quote_cents(m)
+                if rng is None or q is None or m["ticker"] in held:
+                    continue
+                yb, ya = q
+                try:
+                    vol = float(m.get("volume_fp") or 0)
+                except (TypeError, ValueError):
+                    vol = 0
+                if not (2 <= ya <= max_yes_ask and yb >= 1 and vol >= min_volume):
+                    continue
+                prob = range_probability(rng, forecast.mean_f, forecast.sigma_f)
+                if prob > filter_prob:  # forecast says it's actually live -> skip
+                    continue
+                if best is None or ya < best.entry_yes_ask:
+                    best = Position(
+                        ticker=m["ticker"], event_ticker=event_ticker,
+                        category="Weather", entry_yes_bid=yb, entry_yes_ask=ya,
+                        entry_no_cost=100 - yb, contracts=contracts, opened_date=today,
+                        close_time=m.get("close_time", ""), model_prob=round(prob, 4),
+                        weather_date=wd,
+                    )
+            if best is not None:
+                candidates.append(best)
 
     candidates.sort(key=lambda p: p.close_time or "9999")
     opened = candidates[:max_new]

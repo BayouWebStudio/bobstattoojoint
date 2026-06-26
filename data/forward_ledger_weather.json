@@ -1,0 +1,52 @@
+{
+  "positions": [
+    {
+      "ticker": "KXHIGHMIA-26JUN27-T95",
+      "event_ticker": "KXHIGHMIA-26JUN27",
+      "category": "Weather",
+      "entry_yes_bid": 1,
+      "entry_yes_ask": 2,
+      "entry_no_cost": 99,
+      "contracts": 10,
+      "opened_date": "2026-06-26",
+      "close_time": "2026-06-28T04:59:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": 0.0527,
+      "weather_date": "2026-06-27"
+    },
+    {
+      "ticker": "KXHIGHPHIL-26JUN27-T84",
+      "event_ticker": "KXHIGHPHIL-26JUN27",
+      "category": "Weather",
+      "entry_yes_bid": 1,
+      "entry_yes_ask": 3,
+      "entry_no_cost": 99,
+      "contracts": 10,
+      "opened_date": "2026-06-26",
+      "close_time": "2026-06-28T04:59:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": 0.0198,
+      "weather_date": "2026-06-27"
+    },
+    {
+      "ticker": "KXHIGHLAX-26JUN27-B68.5",
+      "event_ticker": "KXHIGHLAX-26JUN27",
+      "category": "Weather",
+      "entry_yes_bid": 2,
+      "entry_yes_ask": 4,
+      "entry_no_cost": 98,
+      "contracts": 10,
+      "opened_date": "2026-06-26",
+      "close_time": "2026-06-28T07:59:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": 0.065,
+      "weather_date": "2026-06-27"
+    }
+  ]
+}
