@@ -43,12 +43,25 @@ class ArbOpportunity:
         )
 
 
-def find_arbitrage(legs: list[Leg], threshold_cents: int = 1) -> ArbOpportunity | None:
+def find_arbitrage(
+    legs: list[Leg],
+    threshold_cents: int = 1,
+    min_completeness_cents: int | None = None,
+) -> ArbOpportunity | None:
     """Detect an arb across a partition of mutually-exclusive YES contracts.
 
     ``threshold_cents`` is the minimum guaranteed profit (after the implicit
     cost of crossing the spread) required to report an opportunity. Returns the
     more profitable of the two directions, or ``None``.
+
+    ``min_completeness_cents`` guards against the most dangerous false positive:
+    a set of outcomes that is mutually exclusive but **not exhaustive** (e.g. a
+    "next pope" event listing 7 named cardinals but not "any other"). Such a set
+    is *not* a valid partition, and its YES prices sum to well under 100c, which
+    naively looks like a huge underpriced arb. A genuine complete partition has
+    YES bids summing to *near* 100c. When this floor is set, an opportunity is
+    only reported if ``sum(yes_bid) >= min_completeness_cents`` (for underpriced)
+    or ``sum(yes_ask) <= 200 - min_completeness_cents`` (for overpriced).
     """
     if len(legs) < 2:
         return None
@@ -60,6 +73,16 @@ def find_arbitrage(legs: list[Leg], threshold_cents: int = 1) -> ArbOpportunity 
     # Overpriced: sell YES on every leg at its bid.
     total_bid = sum(leg.yes_bid for leg in legs)
     over_profit = total_bid - 100
+
+    if min_completeness_cents is not None:
+        # A complete partition brackets 100c: bids just below, asks just above.
+        # Reject sets that look non-exhaustive in the relevant direction.
+        under_ok = total_bid >= min_completeness_cents
+        over_ok = total_ask <= 200 - min_completeness_cents
+        if not under_ok:
+            under_profit = -1
+        if not over_ok:
+            over_profit = -1
 
     if under_profit >= threshold_cents and under_profit >= over_profit:
         signals = [
@@ -86,9 +109,15 @@ class ArbitrageDetector:
     ``groups`` maps an event name to the list of tickers that partition it.
     """
 
-    def __init__(self, groups: dict[str, list[str]], threshold_cents: int = 1):
+    def __init__(
+        self,
+        groups: dict[str, list[str]],
+        threshold_cents: int = 1,
+        min_completeness_cents: int | None = 90,
+    ):
         self._groups = groups
         self._threshold = threshold_cents
+        self._min_completeness = min_completeness_cents
         self._latest: dict[str, Leg] = {}
 
     def update(self, ticker: str, yes_bid: int, yes_ask: int) -> None:
@@ -100,7 +129,7 @@ class ArbitrageDetector:
             legs = [self._latest[t] for t in tickers if t in self._latest]
             if len(legs) != len(tickers):
                 continue  # incomplete book for this event
-            opp = find_arbitrage(legs, self._threshold)
+            opp = find_arbitrage(legs, self._threshold, self._min_completeness)
             if opp is not None:
                 opportunities.append(opp)
         return opportunities

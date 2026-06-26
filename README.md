@@ -46,6 +46,9 @@ python -m kalshi_bot backtest --csv data.csv
 # Backtest a strategy over synthetic data and print performance metrics:
 python -m kalshi_bot backtest --mock --ticks 400
 
+# Backtest over REAL Kalshi candlestick history (public data, no keys needed):
+python -m kalshi_bot backtest --series KXWARMING --kalshi-ticker KXWARMING-50 --days 90
+
 # Run tests
 pytest
 ```
@@ -85,6 +88,7 @@ src/kalshi_bot/
     client.py          # REST client (markets, order book, orders, balance)
     feed.py            # REST-polling feed + offline mock feeds
     ws.py              # WebSocket feed + testable OrderBookState
+    history.py         # Kalshi candlestick history -> backtest snapshots
   execution/
     base.py            # Broker protocol + Fill (paper & live share it)
     live.py            # LiveBroker: routes orders to the Kalshi API
@@ -127,6 +131,24 @@ src/kalshi_bot/
 - [ ] Polymarket order placement (EIP-712 signing + Polygon settlement) — the
       last piece needed for *live* cross-venue execution
 - [ ] Richer fill model (partial fills, queue position, fees)
+
+## Paper testing against real data
+
+Kalshi's market-data endpoints (markets, order books, candlesticks) are public,
+so the bot is validated against **real** markets without credentials:
+
+- **Arbitrage detection** was run on the live next-pope event. This surfaced a
+  correctness bug: the partition detector assumed any set of outcomes is a
+  *complete* partition. A real event listing 7 named candidates (but not "any
+  other") summed to 27c and looked like a 73c "guaranteed arb". The detector now
+  applies a completeness guard (a true partition's YES bids sum near 100c) and
+  correctly rejects non-exhaustive sets.
+- **The live order-book schema had changed** (`orderbook_fp` with dollar-string
+  levels); the REST client now normalizes both the current and legacy schemas to
+  integer cents.
+- **Strategy backtests** run on real candlestick history (e.g. a market that
+  moved 38c -> 81c -> 26c over 120 days), exercising the full
+  feed -> strategy -> broker -> metrics pipeline on genuine prices.
 
 ## Disclaimer
 

@@ -16,6 +16,31 @@ class KalshiError(RuntimeError):
     """Raised when the Kalshi API returns an error response."""
 
 
+def _dollars_to_cents(value) -> int:
+    """Convert a price like ``"0.7500"`` or ``0.75`` (dollars) to integer cents."""
+    return round(float(value) * 100)
+
+
+def normalize_orderbook(payload: dict) -> dict:
+    """Normalize a raw orderbook response to ``{"yes": [[cents, size], ...], "no": [...]}``.
+
+    Accepts the current ``orderbook_fp`` schema (dollar-string levels) and the
+    legacy ``orderbook`` schema (integer-cent levels). Empty/missing sides
+    become empty lists.
+    """
+    fp = payload.get("orderbook_fp")
+    if fp is not None:
+        return {
+            "yes": [[_dollars_to_cents(p), float(s)] for p, s in (fp.get("yes_dollars") or [])],
+            "no": [[_dollars_to_cents(p), float(s)] for p, s in (fp.get("no_dollars") or [])],
+        }
+    ob = payload.get("orderbook") or {}
+    return {
+        "yes": [[int(p), s] for p, s in (ob.get("yes") or [])],
+        "no": [[int(p), s] for p, s in (ob.get("no") or [])],
+    }
+
+
 class KalshiClient:
     """Thin wrapper over the Kalshi REST endpoints we need.
 
@@ -69,12 +94,34 @@ class KalshiClient:
         data = self._request("GET", f"/markets/{ticker}", signed=False)
         return data.get("market", {})
 
+    def get_candlesticks(
+        self, series_ticker: str, ticker: str, start_ts: int, end_ts: int,
+        period_interval: int = 1440,
+    ) -> list[dict]:
+        """Historical OHLC candlesticks for a market (public).
+
+        ``period_interval`` is in minutes (1, 60, or 1440 for daily). Returns the
+        ``candlesticks`` array; each entry has ``yes_bid``/``yes_ask`` sub-objects
+        with ``close_dollars`` etc.
+        """
+        data = self._request(
+            "GET", f"/series/{series_ticker}/markets/{ticker}/candlesticks", signed=False,
+            params={"start_ts": start_ts, "end_ts": end_ts, "period_interval": period_interval},
+        )
+        return data.get("candlesticks", [])
+
     def get_orderbook(self, ticker: str, *, depth: int = 10) -> dict:
-        """Return the order book for a market: {"yes": [[price, size], ...], "no": [...]}."""
+        """Return the order book normalized to ``{"yes": [[cents, size], ...], "no": [...]}``.
+
+        Handles both the current Kalshi schema (``orderbook_fp`` with
+        ``yes_dollars``/``no_dollars`` as ``["0.7500", "75.00"]`` dollar-string
+        levels) and the older ``orderbook`` schema with integer-cent levels.
+        Levels are returned best-price-last, matching the feed's expectations.
+        """
         data = self._request(
             "GET", f"/markets/{ticker}/orderbook", signed=False, params={"depth": depth}
         )
-        return data.get("orderbook", {})
+        return normalize_orderbook(data)
 
     # -- portfolio (signed) ----------------------------------------------
 

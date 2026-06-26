@@ -30,6 +30,12 @@ from .venues.base import MockVenue, Quote
 from .xarb import run_cross_venue
 
 
+def _now_ts() -> int:
+    import time
+
+    return int(time.time())
+
+
 def _load_dotenv() -> None:
     """Minimal .env loader (avoids a hard dependency on python-dotenv)."""
     import os
@@ -78,6 +84,11 @@ def build_parser() -> argparse.ArgumentParser:
     bt = sub.add_parser("backtest", help="Backtest a strategy over snapshots")
     bt.add_argument("--csv", help="CSV of recorded snapshots (see backtest.record)")
     bt.add_argument("--mock", action="store_true", help="Generate synthetic data instead")
+    bt.add_argument("--kalshi-ticker", help="Backtest over real Kalshi candlestick history")
+    bt.add_argument("--series", help="Series ticker for --kalshi-ticker (e.g. KXWARMING)")
+    bt.add_argument("--days", type=int, default=90, help="Days of history for --kalshi-ticker")
+    bt.add_argument("--interval", type=int, default=1440, help="Candle interval minutes (1/60/1440)")
+    bt.add_argument("--end-ts", type=int, default=0, help="History end unix ts (0 = newest available)")
     bt.add_argument("--ticks", type=int, default=500, help="Mock snapshots to generate")
     bt.add_argument("--threshold", type=float, default=2.0, help="Strategy threshold (cents)")
     bt.add_argument("--bankroll", type=float, default=1000.0, help="Bankroll in USD")
@@ -165,10 +176,29 @@ def cmd_arb(args: argparse.Namespace) -> int:
 def cmd_backtest(args: argparse.Namespace) -> int:
     if args.csv:
         snapshots = read_snapshots(args.csv)
+    elif args.kalshi_ticker:
+        if not args.series:
+            print("--kalshi-ticker requires --series (e.g. --series KXWARMING).", file=sys.stderr)
+            return 2
+        from .kalshi.history import candlesticks_to_snapshots
+
+        settings = load_settings()
+        client = KalshiClient(settings)
+        end_ts = args.end_ts or _now_ts()
+        candles = client.get_candlesticks(
+            args.series, args.kalshi_ticker, end_ts - args.days * 86400, end_ts, args.interval
+        )
+        snapshots = candlesticks_to_snapshots(candles, args.kalshi_ticker)
+        snaps = list(snapshots)
+        print(f"Loaded {len(snaps)} real bars for {args.kalshi_ticker}")
+        if not snaps:
+            print("No usable history returned (check --series/--end-ts).", file=sys.stderr)
+            return 2
+        snapshots = snaps
     elif args.mock:
         snapshots = MockFeed().stream(max_ticks=args.ticks)
     else:
-        print("backtest requires --csv PATH or --mock.", file=sys.stderr)
+        print("backtest requires --csv PATH, --kalshi-ticker, or --mock.", file=sys.stderr)
         return 2
 
     strategy = ThresholdStrategy(threshold_cents=args.threshold)

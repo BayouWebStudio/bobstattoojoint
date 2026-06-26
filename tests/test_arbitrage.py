@@ -28,6 +28,22 @@ def test_no_arb_when_tight():
     assert find_arbitrage(legs, threshold_cents=1) is None
 
 
+def test_completeness_guard_rejects_non_exhaustive_partition():
+    # Real-data case (next-pope event): 7 named outcomes that are mutually
+    # exclusive but NOT exhaustive, so YES prices sum far below 100. Naively this
+    # looks like a giant underpriced arb; the completeness guard must reject it.
+    legs = [Leg(f"C{i}", 3, 4) for i in range(7)]  # bids sum 21, asks sum 28
+    assert find_arbitrage(legs, threshold_cents=1) is not None          # naive: false positive
+    assert find_arbitrage(legs, threshold_cents=1, min_completeness_cents=90) is None
+
+
+def test_completeness_guard_allows_real_partition():
+    # A complete partition brackets 100c (bids just below, asks just above).
+    legs = [Leg("A", 40, 41), Leg("B", 33, 34), Leg("C", 18, 19)]  # bids 91, asks 94
+    opp = find_arbitrage(legs, threshold_cents=1, min_completeness_cents=90)
+    assert opp is not None and opp.kind == "underpriced"
+
+
 def test_detector_only_scans_complete_groups():
     det = ArbitrageDetector({"E": ["A", "B", "C"]}, threshold_cents=1)
     det.update("A", 40, 41)
