@@ -105,6 +105,15 @@ def build_parser() -> argparse.ArgumentParser:
     xarb.add_argument("--threshold", type=int, default=1, help="Min guaranteed profit (cents)")
     xarb.add_argument("--rounds", type=int, default=1, help="Number of polling rounds")
 
+    fwd = sub.add_parser("forward", help="Forward (out-of-sample) paper test of fade-longshot")
+    fwd.add_argument("fwd_action", choices=["scan", "settle", "status"],
+                     help="scan: open new positions; settle: resolve them; status: show state")
+    fwd.add_argument("--ledger", default="data/forward_ledger.json", help="Ledger JSON path")
+    fwd.add_argument("--max-yes-ask", type=int, default=15, help="Longshot threshold (cents)")
+    fwd.add_argument("--max-new", type=int, default=40, help="Max new positions per scan")
+    fwd.add_argument("--contracts", type=int, default=10, help="Contracts per position")
+    fwd.add_argument("--min-volume", type=float, default=1000.0, help="Min market volume")
+
     cal = sub.add_parser("calibrate",
                          help="Measure favorite-longshot bias on settled Kalshi markets")
     cal.add_argument("--series", nargs="*", default=[],
@@ -269,6 +278,42 @@ def cmd_xarb(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_forward(args: argparse.Namespace) -> int:
+    import datetime as dt
+
+    from .forward import ForwardLedger, scan_and_open, settle_open
+
+    ledger = ForwardLedger(args.ledger)
+    client = KalshiClient(load_settings())
+
+    if args.fwd_action == "scan":
+        today = dt.date.today().isoformat()
+        opened = scan_and_open(
+            ledger, client, today=today, max_yes_ask=args.max_yes_ask,
+            max_new=args.max_new, contracts=args.contracts, min_volume=args.min_volume,
+        )
+        print(f"Opened {len(opened)} new paper NO positions (fade-longshot).")
+        for p in opened[:15]:
+            print(f"  {p.ticker[:42]:44} NO@{p.entry_no_cost}c x{p.contracts} "
+                  f"(YES {p.entry_yes_bid}/{p.entry_yes_ask}) close={p.close_time[:10]} [{p.category}]")
+        print(f"\n{ledger.summary()}")
+        return 0
+
+    if args.fwd_action == "settle":
+        n = settle_open(ledger, client)
+        print(f"Settled {n} positions.")
+        print(ledger.summary())
+        return 0
+
+    # status
+    print(ledger.summary())
+    for p in ledger.settled_positions():
+        print(f"  [settled] {p.ticker[:40]:42} {p.result} P&L {p.realized_pnl_cents:+.1f}c")
+    for p in ledger.open_positions()[:20]:
+        print(f"  [open]    {p.ticker[:40]:42} NO@{p.entry_no_cost}c close={p.close_time[:10]}")
+    return 0
+
+
 def cmd_calibrate(args: argparse.Namespace) -> int:
     from .research.calibration import calibration_table, fade_longshot_backtest
     from .research.collect import collect_settled_samples
@@ -338,6 +383,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_xarb(args)
     if args.command == "calibrate":
         return cmd_calibrate(args)
+    if args.command == "forward":
+        return cmd_forward(args)
     return 1
 
 

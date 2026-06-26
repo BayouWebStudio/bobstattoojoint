@@ -52,6 +52,11 @@ python -m kalshi_bot backtest --series KXWARMING --kalshi-ticker KXWARMING-50 --
 # Measure the favorite-longshot edge on real settled markets (see docs/STRATEGY.md):
 python -m kalshi_bot calibrate --max-yes-ask 15 --entry mid
 
+# Forward (out-of-sample) paper test: open live positions now, settle them later
+python -m kalshi_bot forward scan      # open paper NO positions on live longshots
+python -m kalshi_bot forward settle    # mark any now-settled positions (run over days)
+python -m kalshi_bot forward status    # running out-of-sample P&L
+
 # Run tests
 pytest
 ```
@@ -170,6 +175,14 @@ It is real but **modest, skewed (rare large losses), and capacity-limited** — 
 behavioral edge to deploy with small size and broad diversification, not a money
 printer. The naive mean-reversion strategy, by contrast, does *not* beat costs.
 Reproduce the measurement with `python -m kalshi_bot calibrate`.
+
+**Out-of-sample validation in progress.** A backtest can overfit, so a live
+forward test is running: 40 paper NO positions were opened on real deep
+longshots (recorded in `data/forward_ledger.json`, diversified one-per-event,
+entered at the conservative cross-the-spread price). Run `forward settle` over
+the coming days/weeks as those markets resolve to accumulate genuine
+out-of-sample results — this is the real test of the edge, and we evaluate it
+before investing in a passive-execution layer.
 
 ## Disclaimer
 
