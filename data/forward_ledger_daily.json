@@ -10,9 +10,11 @@
       "contracts": 10,
       "opened_date": "2026-06-26",
       "close_time": "2026-06-26T21:00:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 1,
+      "model_prob": null,
+      "weather_date": null
     },
     {
       "ticker": "KXETHD-26JUN2617-T1609.99",
@@ -24,9 +26,11 @@
       "contracts": 10,
       "opened_date": "2026-06-26",
       "close_time": "2026-06-26T21:00:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 0,
+      "model_prob": null,
+      "weather_date": null
     },
     {
       "ticker": "KXBTC-26JUN2617-B58250",
@@ -38,9 +42,11 @@
       "contracts": 10,
       "opened_date": "2026-06-26",
       "close_time": "2026-06-26T21:00:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 0,
+      "model_prob": null,
+      "weather_date": null
     },
     {
       "ticker": "KXBTCD-26JUN2617-T60499.99",
@@ -52,9 +58,11 @@
       "contracts": 10,
       "opened_date": "2026-06-26",
       "close_time": "2026-06-26T21:00:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 2,
+      "model_prob": null,
+      "weather_date": null
     },
     {
       "ticker": "KXHIGHNY-26JUN26-B83.5",
@@ -66,9 +74,11 @@
       "contracts": 10,
       "opened_date": "2026-06-26",
       "close_time": "2026-06-27T04:59:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 5,
+      "model_prob": null,
+      "weather_date": null
     },
     {
       "ticker": "KXHIGHPHIL-26JUN26-B89.5",
@@ -80,9 +90,11 @@
       "contracts": 10,
       "opened_date": "2026-06-26",
       "close_time": "2026-06-27T04:59:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 3,
+      "model_prob": null,
+      "weather_date": null
     },
     {
       "ticker": "KXHIGHCHI-26JUN26-B70.5",
@@ -94,9 +106,11 @@
       "contracts": 10,
       "opened_date": "2026-06-26",
       "close_time": "2026-06-27T05:59:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 3,
+      "model_prob": null,
+      "weather_date": null
     },
     {
       "ticker": "KXHIGHDEN-26JUN26-T90",
@@ -108,9 +122,11 @@
       "contracts": 10,
       "opened_date": "2026-06-26",
       "close_time": "2026-06-27T06:59:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 5,
+      "model_prob": null,
+      "weather_date": null
     },
     {
       "ticker": "KXHIGHLAX-26JUN26-T73",
@@ -122,9 +138,11 @@
       "contracts": 10,
       "opened_date": "2026-06-26",
       "close_time": "2026-06-27T07:59:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 2,
+      "model_prob": null,
+      "weather_date": null
     },
     {
       "ticker": "KXBTCD-26JUN2717-T61749.99",
@@ -136,9 +154,11 @@
       "contracts": 10,
       "opened_date": "2026-06-26",
       "close_time": "2026-06-27T21:00:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 0,
+      "model_prob": null,
+      "weather_date": null
     }
   ]
 }
