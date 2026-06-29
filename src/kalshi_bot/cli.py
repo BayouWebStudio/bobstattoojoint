@@ -120,6 +120,8 @@ def build_parser() -> argparse.ArgumentParser:
     fwd.add_argument("--series", nargs="*", default=[], help="Explicit series to scan")
     fwd.add_argument("--weather", action="store_true",
                      help="Forecast-filtered fade-longshot on weather markets (the double edge)")
+    fwd.add_argument("--precip", action="store_true",
+                     help="Forecast-driven fade on rain markets (KXRAINNYC)")
     fwd.add_argument("--min-edge", type=float, default=2.0,
                      help="Min forecast EV per contract in cents (weather mode)")
     fwd.add_argument("--lead-min", type=int, default=1, help="Min lead days (weather mode)")
@@ -307,7 +309,9 @@ def cmd_xarb(args: argparse.Namespace) -> int:
 def cmd_forward(args: argparse.Namespace) -> int:
     import datetime as dt
 
-    from .forward import ForwardLedger, scan_and_open, scan_weather_filtered, settle_open
+    from .forward import (
+        ForwardLedger, scan_and_open, scan_precip, scan_weather_filtered, settle_open,
+    )
 
     ledger = ForwardLedger(args.ledger)
     client = KalshiClient(load_settings())
@@ -321,6 +325,17 @@ def cmd_forward(args: argparse.Namespace) -> int:
 
     if args.fwd_action == "scan":
         today = dt.date.today().isoformat()
+        if args.precip:
+            opened = scan_precip(ledger, client, today=today, min_lead_days=args.lead_min,
+                                 max_lead_days=args.lead_max, min_edge_cents=args.min_edge,
+                                 min_volume=args.min_volume)
+            print(f"Opened {len(opened)} forecast-driven rain fades (EV >= {args.min_edge}c).")
+            for p in opened:
+                print(f"  {p.ticker[:40]:42} NO@{p.entry_no_cost}c (YES {p.entry_yes_bid}/"
+                      f"{p.entry_yes_ask}) P(rain) {p.model_prob*100:.1f}% EV {p.edge_cents:+.1f}c "
+                      f"wx={p.weather_date}")
+            print(f"\n{ledger.summary()}")
+            return 0
         if args.weather:
             opened = scan_weather_filtered(
                 ledger, client, today=today, min_lead_days=args.lead_min,

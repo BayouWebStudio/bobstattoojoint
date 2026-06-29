@@ -337,6 +337,92 @@ def scan_weather_filtered(
     return opened
 
 
+def scan_precip(
+    ledger: ForwardLedger,
+    client: KalshiClient,
+    *,
+    today: str,
+    series: str = "KXRAINNYC",
+    station_series: str = "KXHIGHNY",   # Central Park coords
+    min_lead_days: int = 1,
+    max_lead_days: int = 3,
+    min_edge_cents: float = 3.0,
+    entry: str = "ask",                  # rain markets are thin; assume crossing
+    min_volume: float = 20.0,
+    contracts: int = 10,
+    session=None,
+) -> list[Position]:
+    """Fade (buy NO) Kalshi rain markets when the forecast says rain is unlikely.
+
+    Binary "precip > 0" markets priced from Open-Meteo P(rain). Opens a NO fade
+    when ``(1 - P(rain))*100 - NO_cost - fee >= min_edge_cents``.
+    """
+    import datetime as dt
+
+    import requests
+
+    from .research.calibration import kalshi_fee_cents
+    from .weather.precip import fetch_rain_probability
+    from .weather.scan import weather_date_from_ticker
+    from .weather.stations import STATIONS
+
+    session = session or requests.Session()
+    station = STATIONS.get(station_series)
+    if station is None:
+        return []
+    held = ledger.open_tickers() | {p.ticker for p in ledger.settled_positions()}
+    today_d = dt.date.fromisoformat(today)
+    lo, hi = today_d + dt.timedelta(days=min_lead_days), today_d + dt.timedelta(days=max_lead_days)
+
+    try:
+        markets = client.get_markets(series_ticker=series, status="open", limit=50)
+    except Exception:
+        return []
+
+    opened: list[Position] = []
+    for m in markets:
+        if m["ticker"] in held:
+            continue
+        wd = weather_date_from_ticker(m.get("event_ticker", "")) or \
+            weather_date_from_ticker(m["ticker"])
+        if not wd:
+            continue
+        try:
+            wd_date = dt.date.fromisoformat(wd)
+        except ValueError:
+            continue
+        if not (lo <= wd_date <= hi):
+            continue
+        q = market_quote_cents(m)
+        if q is None:
+            continue
+        yb, ya = q
+        try:
+            vol = float(m.get("volume_fp") or 0)
+        except (TypeError, ValueError):
+            vol = 0
+        if not (yb >= 1 and ya <= 99 and vol >= min_volume):
+            continue
+        prob = fetch_rain_probability(station, wd, session=session)  # P(rain = YES)
+        if prob is None:
+            continue
+        no_cost = (100 - yb) if entry == "ask" else round(100 - (yb + ya) / 2)
+        edge = (1 - prob) * 100 - no_cost - kalshi_fee_cents(no_cost)
+        if edge < min_edge_cents:
+            continue
+        pos = Position(
+            ticker=m["ticker"], event_ticker=m.get("event_ticker", ""), category="Rain",
+            entry_yes_bid=yb, entry_yes_ask=ya, entry_no_cost=no_cost, contracts=contracts,
+            opened_date=today, close_time=m.get("close_time", ""), model_prob=round(prob, 4),
+            weather_date=wd, entry_mode=entry, edge_cents=round(edge, 1),
+        )
+        ledger.add(pos)
+        opened.append(pos)
+    if opened:
+        ledger.save()
+    return opened
+
+
 def settle_position(position: Position, market: dict) -> bool:
     """If ``market`` has settled, finalize the position's P&L. Returns True if changed."""
     status = market.get("status", "")
