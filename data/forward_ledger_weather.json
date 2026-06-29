@@ -14,7 +14,12 @@
       "result": "no",
       "realized_pnl_cents": 0,
       "model_prob": 0.0527,
-      "weather_date": "2026-06-27"
+      "weather_date": "2026-06-27",
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXHIGHPHIL-26JUN27-T84",
@@ -30,7 +35,12 @@
       "result": "no",
       "realized_pnl_cents": 0,
       "model_prob": 0.0198,
-      "weather_date": "2026-06-27"
+      "weather_date": "2026-06-27",
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXHIGHLAX-26JUN27-B68.5",
@@ -46,7 +56,33 @@
       "result": "no",
       "realized_pnl_cents": 1,
       "model_prob": 0.065,
-      "weather_date": "2026-06-27"
+      "weather_date": "2026-06-27",
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXHIGHLAX-26JUN30-B67.5",
+      "event_ticker": "KXHIGHLAX-26JUN30",
+      "category": "Weather",
+      "entry_yes_bid": 12,
+      "entry_yes_ask": 13,
+      "entry_no_cost": 88,
+      "contracts": 10,
+      "opened_date": "2026-06-29",
+      "close_time": "2026-07-01T07:59:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": 0.0889,
+      "weather_date": "2026-06-30",
+      "forecast_mean": 72.3,
+      "forecast_sigma": 3.5,
+      "entry_mode": "mid",
+      "edge_cents": 2.1,
+      "actual_high": null
     }
   ]
 }

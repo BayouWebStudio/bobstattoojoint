@@ -49,6 +49,11 @@ class Position:
     # Set for forecast-filtered weather fades:
     model_prob: float | None = None
     weather_date: str | None = None
+    forecast_mean: float | None = None
+    forecast_sigma: float | None = None
+    entry_mode: str | None = None        # "mid" (passive) | "ask" (cross spread)
+    edge_cents: float | None = None      # modeled EV per contract at entry
+    actual_high: float | None = None     # realized temperature, filled at settlement
 
 
 def market_quote_cents(m: dict) -> tuple[int, int] | None:
@@ -221,23 +226,33 @@ def scan_weather_filtered(
     client: KalshiClient,
     *,
     today: str,
-    min_lead_days: int = 2,
+    min_lead_days: int = 1,
     max_lead_days: int = 3,
-    max_yes_ask: int = 15,
-    filter_prob: float = 0.07,
+    min_yes_ask: int = 3,
+    max_yes_ask: int = 20,
+    min_edge_cents: float = 2.0,
+    entry: str = "mid",
     sigma_floor: float = 3.5,
     min_volume: float = 200.0,
     contracts: int = 10,
     max_new: int = 20,
     session=None,
 ) -> list[Position]:
-    """Open forecast-filtered fade-longshot positions on weather markets.
+    """Open forecast-driven NO (fade) positions on weather longshot ranges.
 
     For events settling ``min_lead_days``-``max_lead_days`` out, fetch the live
-    forecast for the weather date and, in each event, fade (buy NO) the deepest
-    longshot only if the forecast independently says it is unlikely
-    (``model_prob <= filter_prob``). One position per event for diversification.
+    forecast and, in each event, buy NO on the longshot range with the highest
+    **expected value** at the chosen entry, when that EV clears ``min_edge_cents``
+    after fees. EV uses the forecast probability:
+    ``(1 - model_prob)*100 - NO_cost - fee``.
+
+    This is the principled form of the fade: it targets ranges the market
+    *overprices* relative to the forecast, regardless of exact price — the deep
+    1-2c longshots are usually -EV (the calibrated forecast says they are more
+    likely than their price implies), while genuine value sits where the market
+    bids a tail up past what the forecast supports. One position per event.
     """
+    from .research.calibration import kalshi_fee_cents
     import datetime as dt
     from collections import defaultdict
 
@@ -280,8 +295,10 @@ def scan_weather_filtered(
             if forecast is None:
                 continue
 
-            # Among qualifying longshots in this event, fade the deepest one.
+            # In each event, take the longshot NO with the best EV that clears
+            # the edge threshold (one position per event for diversification).
             best: Position | None = None
+            best_edge = min_edge_cents
             for m in ms:
                 rng = parse_range(m.get("yes_sub_title", ""))
                 q = market_quote_cents(m)
@@ -292,18 +309,21 @@ def scan_weather_filtered(
                     vol = float(m.get("volume_fp") or 0)
                 except (TypeError, ValueError):
                     vol = 0
-                if not (2 <= ya <= max_yes_ask and yb >= 1 and vol >= min_volume):
+                if not (min_yes_ask <= ya <= max_yes_ask and yb >= 1 and vol >= min_volume):
                     continue
                 prob = range_probability(rng, forecast.mean_f, forecast.sigma_f)
-                if prob > filter_prob:  # forecast says it's actually live -> skip
-                    continue
-                if best is None or ya < best.entry_yes_ask:
+                no_cost = (100 - yb) if entry == "ask" else round(100 - (yb + ya) / 2)
+                edge = (1 - prob) * 100 - no_cost - kalshi_fee_cents(no_cost)
+                if edge >= best_edge:
+                    best_edge = edge
                     best = Position(
                         ticker=m["ticker"], event_ticker=event_ticker,
                         category="Weather", entry_yes_bid=yb, entry_yes_ask=ya,
-                        entry_no_cost=100 - yb, contracts=contracts, opened_date=today,
+                        entry_no_cost=no_cost, contracts=contracts, opened_date=today,
                         close_time=m.get("close_time", ""), model_prob=round(prob, 4),
-                        weather_date=wd,
+                        weather_date=wd, forecast_mean=round(forecast.mean_f, 1),
+                        forecast_sigma=round(forecast.sigma_f, 1), entry_mode=entry,
+                        edge_cents=round(edge, 1),
                     )
             if best is not None:
                 candidates.append(best)
@@ -332,9 +352,19 @@ def settle_position(position: Position, market: dict) -> bool:
     return True
 
 
-def settle_open(ledger: ForwardLedger, client: KalshiClient) -> int:
-    """Check each open position; settle the ones whose market has resolved."""
+RESULTS_LOG = "data/results_log.csv"
+
+
+def settle_open(ledger: ForwardLedger, client: KalshiClient, *, results_log: str = RESULTS_LOG,
+                session=None) -> int:
+    """Check each open position; settle the ones whose market has resolved.
+
+    Weather positions are enriched with the realized daily high (for later
+    forecast-calibration analysis), and every newly-settled position is appended
+    to a permanent results log so no data is lost across runs.
+    """
     changed = 0
+    newly_settled: list[Position] = []
     for p in ledger.open_positions():
         try:
             market = client.get_market(p.ticker)
@@ -343,7 +373,54 @@ def settle_open(ledger: ForwardLedger, client: KalshiClient) -> int:
             continue
         if settle_position(p, market):
             changed += 1
+            _enrich_actual_high(p, session)
+            newly_settled.append(p)
             log.info("settled %s -> %s  P&L %+.1fc", p.ticker, p.result, p.realized_pnl_cents)
     if changed:
         ledger.save()
+        append_results_log(newly_settled, results_log)
     return changed
+
+
+def _enrich_actual_high(position: Position, session=None) -> None:
+    """Best-effort: record the realized daily high for a settled weather position."""
+    if not position.weather_date:
+        return
+    try:
+        from .weather.forecast import fetch_actuals
+        from .weather.stations import STATIONS
+
+        series = position.ticker.split("-")[0]
+        station = STATIONS.get(series)
+        if station is None:
+            return
+        actuals = fetch_actuals(station, position.weather_date, position.weather_date,
+                                session=session)
+        if position.weather_date in actuals:
+            position.actual_high = round(actuals[position.weather_date], 1)
+    except Exception:  # noqa: BLE001 - enrichment is non-critical
+        pass
+
+
+_RESULTS_FIELDS = [
+    "ticker", "category", "weather_date", "opened_date", "close_time",
+    "entry_yes_bid", "entry_yes_ask", "entry_no_cost", "entry_mode", "contracts",
+    "model_prob", "forecast_mean", "forecast_sigma", "edge_cents", "actual_high",
+    "result", "realized_pnl_cents",
+]
+
+
+def append_results_log(positions: list[Position], path: str = RESULTS_LOG) -> None:
+    """Append settled positions to a permanent CSV (header written once)."""
+    import csv
+    from dataclasses import asdict
+
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    exists = p.exists()
+    with p.open("a", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=_RESULTS_FIELDS, extrasaction="ignore")
+        if not exists:
+            writer.writeheader()
+        for pos in positions:
+            writer.writerow(asdict(pos))

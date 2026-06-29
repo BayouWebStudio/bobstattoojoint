@@ -120,10 +120,14 @@ def build_parser() -> argparse.ArgumentParser:
     fwd.add_argument("--series", nargs="*", default=[], help="Explicit series to scan")
     fwd.add_argument("--weather", action="store_true",
                      help="Forecast-filtered fade-longshot on weather markets (the double edge)")
-    fwd.add_argument("--filter-prob", type=float, default=0.07,
-                     help="Fade only if forecast model_prob <= this (weather mode)")
-    fwd.add_argument("--lead-min", type=int, default=2, help="Min lead days (weather mode)")
+    fwd.add_argument("--min-edge", type=float, default=2.0,
+                     help="Min forecast EV per contract in cents (weather mode)")
+    fwd.add_argument("--lead-min", type=int, default=1, help="Min lead days (weather mode)")
     fwd.add_argument("--lead-max", type=int, default=3, help="Max lead days (weather mode)")
+    fwd.add_argument("--min-yes-ask", type=int, default=3,
+                     help="Skip longshots cheaper than this YES ask (weather mode)")
+    fwd.add_argument("--entry", choices=["mid", "ask"], default="mid",
+                     help="Entry: passive mid or aggressive cross-spread (weather mode)")
 
     wx = sub.add_parser("weather",
                         help="Forecast-vs-market value bets on Kalshi high-temp markets")
@@ -320,15 +324,18 @@ def cmd_forward(args: argparse.Namespace) -> int:
         if args.weather:
             opened = scan_weather_filtered(
                 ledger, client, today=today, min_lead_days=args.lead_min,
-                max_lead_days=args.lead_max, max_yes_ask=args.max_yes_ask,
-                filter_prob=args.filter_prob, min_volume=args.min_volume,
+                max_lead_days=args.lead_max, min_yes_ask=args.min_yes_ask,
+                max_yes_ask=args.max_yes_ask, min_edge_cents=args.min_edge,
+                entry=args.entry, min_volume=args.min_volume,
                 contracts=args.contracts, max_new=args.max_new,
             )
-            print(f"Opened {len(opened)} forecast-filtered weather fades "
-                  f"(model_prob <= {args.filter_prob}).")
+            print(f"Opened {len(opened)} forecast-value weather fades "
+                  f"(EV >= {args.min_edge}c, YES {args.min_yes_ask}-{args.max_yes_ask}c, "
+                  f"{args.entry} entry).")
             for p in opened[:20]:
-                print(f"  {p.ticker[:40]:42} NO@{p.entry_no_cost}c "
-                      f"model {p.model_prob*100:.1f}% wx={p.weather_date} close={p.close_time[:10]}")
+                print(f"  {p.ticker[:40]:42} NO@{p.entry_no_cost}c (YES {p.entry_yes_bid}/"
+                      f"{p.entry_yes_ask}) model {p.model_prob*100:.1f}% EV {p.edge_cents:+.1f}c "
+                      f"fc={p.forecast_mean}F wx={p.weather_date}")
             print(f"\n{ledger.summary()}")
             return 0
         series = args.series or (DAILY_SERIES if args.daily else None)

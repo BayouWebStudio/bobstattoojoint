@@ -57,13 +57,19 @@ def test_settle_open_persists(tmp_path):
     led.save()
 
     client = FakeClient({"WIN": {"status": "settled", "result": "no"}})
-    n = settle_open(led, client)
+    log = tmp_path / "results.csv"
+    n = settle_open(led, client, results_log=str(log))
     assert n == 1
 
     reloaded = ForwardLedger(str(tmp_path / "ledger.json"))
     assert len(reloaded.settled_positions()) == 1
     assert len(reloaded.open_positions()) == 1
     assert "settled=1" in reloaded.summary()
+
+    # The newly-settled position is appended to the permanent results log.
+    rows = log.read_text().strip().splitlines()
+    assert rows[0].startswith("ticker,")        # header
+    assert any(r.startswith("WIN,") for r in rows[1:])
 
 
 class FakeScanClient:
