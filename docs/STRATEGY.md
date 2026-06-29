@@ -151,3 +151,28 @@ So: a **real, mechanistically-sound edge** at 72h lead — the strongest weather
 result so far. Next step before real money: forward-test it live (open
 forecast-filtered fades at 72h lead, settle over the following days) to confirm
 out-of-sample, exactly as we are doing for the election fade.
+
+## Polymarket global weather (read-only; promising but unconfirmed)
+
+Polymarket runs daily temperature markets for ~23 world cities (Seoul, Paris,
+Tokyo, São Paulo, …) — far more than Kalshi's 7 US cities — all forecastable with
+Open-Meteo. Trading needs crypto (out of scope), so this is read-only / paper.
+
+Backtesting forecast-value betting (buy the side the forecast favours when it
+differs from the market by an edge, 2-day lead) over **1,500 settled events / 23
+cities / 339 sampled bins**:
+
+| Edge | n | ROI | win | t-stat |
+|------|---|-----|-----|--------|
+| ≥3¢ | 261 | +6.5% | 33% | 1.06 |
+| ≥8¢ | 158 | +8.3% | 41% | 1.25 |
+| ≥15¢ | 71 | +5.8% | 46% | 0.56 |
+
+ROI is **consistently positive (+5–8%) at every threshold**, but t-stats hover at
+~1 — **not statistically significant**. These are high-variance value bets (33–46%
+win rate: a losing 25% YES that pays 4× when right), so confirming a ~+6% edge to
+t>2 would need thousands of samples. **Verdict: promising and consistent, but
+unconfirmed.** Polymarket appears more efficient than Kalshi (sharper money); a
+modest forecast edge may survive, but the evidence isn't conclusive. The clean
+way to settle it is a paper forward test (no crypto needed) accumulating live
+out-of-sample results over time.
