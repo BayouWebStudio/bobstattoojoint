@@ -61,6 +61,7 @@ class PolyTempMarket:
     yes_price: float   # 0-1 (dollars)
     token_id: str | None
     volume: float
+    market_id: str | None = None
 
 
 def parse_celsius_bin(title: str) -> Range | None:
@@ -112,11 +113,21 @@ def markets_from_event(event: dict) -> list[PolyTempMarket]:
         rng = parse_celsius_bin(bin_title)
         if rng is None:
             continue
-        try:
-            prices = json.loads(m.get("outcomePrices") or "[]")
-            yes = float(prices[0]) if prices else None
-        except (ValueError, TypeError, IndexError):
-            yes = None
+        # Prefer the live order-book mid (bestBid/bestAsk) over the last-trade
+        # price, which can be stale on thin bins.
+        bb, ba = m.get("bestBid"), m.get("bestAsk")
+        yes = None
+        if bb is not None and ba is not None:
+            try:
+                yes = (float(bb) + float(ba)) / 2.0
+            except (ValueError, TypeError):
+                yes = None
+        if yes is None:
+            try:
+                prices = json.loads(m.get("outcomePrices") or "[]")
+                yes = float(prices[0]) if prices else None
+            except (ValueError, TypeError, IndexError):
+                yes = None
         if yes is None:
             continue
         token = None
@@ -129,7 +140,8 @@ def markets_from_event(event: dict) -> list[PolyTempMarket]:
             vol = float(m.get("volumeNum") or 0)
         except (TypeError, ValueError):
             vol = 0.0
-        out.append(PolyTempMarket(city, date, bin_title, rng, yes, token, vol))
+        out.append(PolyTempMarket(city, date, bin_title, rng, yes, token, vol,
+                                  market_id=str(m.get("id")) if m.get("id") else None))
     return out
 
 
@@ -138,6 +150,47 @@ def _stdev(xs: list[float], mean: float) -> float:
     if len(xs) < 2:
         return 0.0
     return math.sqrt(sum((x - mean) ** 2 for x in xs) / (len(xs) - 1))
+
+
+ARCHIVE = "https://archive-api.open-meteo.com/v1/archive"
+
+
+def city_calibration(city: str, session: requests.Session, *, lead_days: int = 2,
+                     days: int = 45, today: str = "2026-06-28") -> tuple[float, float]:
+    """Return (bias, sigma) in Celsius for a city's lead forecast vs realized.
+
+    ``bias = mean(forecast - actual)`` over recent days (our gridpoint may run
+    systematically hot/cold vs the market's resolution source — e.g. Seoul runs
+    several degrees hot); subtracting it removes the spurious "edges" that are
+    really our model error. ``sigma`` is the forecast-error spread (floored).
+    """
+    import datetime as dt
+    import statistics
+
+    if city not in CITY_COORDS:
+        return 0.0, SIGMA_FLOOR_C + 1.0
+    lat, lon, tz = CITY_COORDS[city]
+    var = f"temperature_2m_previous_day{lead_days}"
+    fc_r = session.get(PREVIOUS_RUNS, params={
+        "latitude": lat, "longitude": lon, "hourly": var, "temperature_unit": "celsius",
+        "timezone": tz, "past_days": days, "forecast_days": 1}, timeout=40).json().get("hourly", {})
+    by_day: dict[str, list[float]] = defaultdict(list)
+    for t, v in zip(fc_r.get("time", []), fc_r.get(var, [])):
+        if v is not None:
+            by_day[t[:10]].append(v)
+    fc = {d: max(vs) for d, vs in by_day.items() if vs}
+
+    start = (dt.date.fromisoformat(today) - dt.timedelta(days=days + 2)).isoformat()
+    ar = session.get(ARCHIVE, params={
+        "latitude": lat, "longitude": lon, "daily": "temperature_2m_max",
+        "temperature_unit": "celsius", "timezone": tz, "start_date": start,
+        "end_date": today}, timeout=40).json().get("daily", {})
+    act = {d: v for d, v in zip(ar.get("time", []), ar.get("temperature_2m_max", []))
+           if v is not None}
+    errs = [fc[d] - act[d] for d in fc if d in act]
+    if len(errs) < 4:
+        return 0.0, SIGMA_FLOOR_C + 1.0
+    return statistics.mean(errs), max(statistics.pstdev(errs), SIGMA_FLOOR_C)
 
 
 def fetch_forecast_c(city: str, date: str, session: requests.Session,

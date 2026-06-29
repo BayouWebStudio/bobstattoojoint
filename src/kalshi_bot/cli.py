@@ -142,6 +142,18 @@ def build_parser() -> argparse.ArgumentParser:
     wxb.add_argument("--lead-days", type=int, default=3, help="Forecast/entry lead (days)")
     wxb.add_argument("--per-city", type=int, default=45, help="Max settled markets per city")
 
+    pw = sub.add_parser("polyweather",
+                        help="Paper forward test: forecast-value bets on Polymarket global weather")
+    pw.add_argument("pw_action", choices=["scan", "settle", "status"])
+    pw.add_argument("--ledger", default="data/poly_weather_ledger.json")
+    pw.add_argument("--min-edge", type=float, default=4.0, help="Min EV per contract (cents)")
+    pw.add_argument("--max-edge", type=float, default=15.0,
+                    help="Skip larger edges as likely model error vs sharp market")
+    pw.add_argument("--min-volume", type=float, default=2000.0, help="Min bin volume")
+    pw.add_argument("--lead-min", type=int, default=1)
+    pw.add_argument("--lead-max", type=int, default=3)
+    pw.add_argument("--max-new", type=int, default=20)
+
     cal = sub.add_parser("calibrate",
                          help="Measure favorite-longshot bias on settled Kalshi markets")
     cal.add_argument("--series", nargs="*", default=[],
@@ -411,6 +423,38 @@ def cmd_weather(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_polyweather(args: argparse.Namespace) -> int:
+    import datetime as dt
+
+    from .polymarket.forward import PolyLedger, scan_poly_weather, settle_poly
+
+    ledger = PolyLedger(args.ledger)
+    if args.pw_action == "scan":
+        today = dt.date.today().isoformat()
+        opened = scan_poly_weather(ledger, today=today, min_lead_days=args.lead_min,
+                                   max_lead_days=args.lead_max, min_edge_cents=args.min_edge,
+                                   max_edge_cents=args.max_edge, min_volume=args.min_volume,
+                                   max_new=args.max_new)
+        print(f"Opened {len(opened)} Polymarket weather value bets (EV >= {args.min_edge}c, paper).")
+        for p in opened:
+            print(f"  {p.city:14} {p.weather_date} {p.bin_title:14} {p.side.upper()}@"
+                  f"{p.entry_cost_cents:.0f}c model {p.model_prob*100:4.1f}% mkt {p.market_yes*100:4.1f}% "
+                  f"EV {p.edge_cents:+.1f}c")
+        print(f"\n{ledger.summary()}")
+        return 0
+    if args.pw_action == "settle":
+        n = settle_poly(ledger)
+        print(f"Settled {n} positions.")
+        print(ledger.summary())
+        return 0
+    print(ledger.summary())
+    for p in ledger.settled_positions():
+        print(f"  [settled] {p.city:14} {p.bin_title:14} {p.side} P&L {p.realized_pnl_cents:+.1f}c")
+    for p in ledger.open_positions()[:25]:
+        print(f"  [open]    {p.city:14} {p.weather_date} {p.bin_title:14} {p.side}@{p.entry_cost_cents:.0f}c")
+    return 0
+
+
 def cmd_weather_backtest(args: argparse.Namespace) -> int:
     from .weather.backtest import collect_samples, fade_backtest
 
@@ -501,6 +545,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_weather(args)
     if args.command == "weather-backtest":
         return cmd_weather_backtest(args)
+    if args.command == "polyweather":
+        return cmd_polyweather(args)
     return 1
 
 
