@@ -12,7 +12,14 @@
       "close_time": "2026-07-01T03:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXCOACHOUTNBADATE-27NNUR-26JUL01",
@@ -26,7 +33,14 @@
       "close_time": "2026-07-01T03:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXIPOCANVA-DATE-26SEP01",
@@ -40,7 +54,14 @@
       "close_time": "2026-09-01T03:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXTVSEASONRELEASETHELASTOFUS-26-OCT",
@@ -54,7 +75,14 @@
       "close_time": "2026-10-01T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXCOACHOUTNBADATE-27SKER-26OCT25",
@@ -68,7 +96,14 @@
       "close_time": "2026-10-25T03:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXCOACHOUTNBADATE-27MBRO-26OCT25",
@@ -82,7 +117,14 @@
       "close_time": "2026-10-25T03:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXIPOSKIMS-DATE-26NOV01",
@@ -96,7 +138,14 @@
       "close_time": "2026-11-01T04:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXTAIWANLVL4-27JAN01",
@@ -110,7 +159,14 @@
       "close_time": "2027-01-01T04:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXIPOFANNIE-27JAN01",
@@ -124,7 +180,14 @@
       "close_time": "2027-01-01T04:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXUSAEXPANDTERRITORY-27JAN01",
@@ -138,7 +201,14 @@
       "close_time": "2027-01-01T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXGREENTERRITORY-29-27",
@@ -152,7 +222,14 @@
       "close_time": "2027-01-01T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXVETOOVERRIDE-29JAN20-27",
@@ -166,7 +243,14 @@
       "close_time": "2027-01-01T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXRECOGROC-29-27",
@@ -180,7 +264,14 @@
       "close_time": "2027-01-01T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXIMPEACHCABINET-27JAN01",
@@ -194,7 +285,14 @@
       "close_time": "2027-01-01T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXGREENLAND-29-27",
@@ -208,7 +306,14 @@
       "close_time": "2027-01-01T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXTRUMPRUN-27JAN01",
@@ -222,7 +327,14 @@
       "close_time": "2027-01-01T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXESVI-27",
@@ -236,7 +348,14 @@
       "close_time": "2027-01-01T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXFREDDIE-27JUN01",
@@ -250,7 +369,14 @@
       "close_time": "2027-06-01T03:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXVOTEPRIMARY-NY13D26DCHEDCHE-75",
@@ -264,7 +390,14 @@
       "close_time": "2027-06-23T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXPRIMARYMOV-SENATELAR26-JLET-P57",
@@ -278,7 +411,14 @@
       "close_time": "2027-06-27T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXTAKEOVERACQWB-27JUN30-NFLX",
@@ -292,7 +432,14 @@
       "close_time": "2027-07-01T03:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXMANCHESTERMAYOR-26JUL30-REF",
@@ -306,7 +453,14 @@
       "close_time": "2027-07-30T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXPRIMARYPLACE-SENATEMID26-2-MMCM",
@@ -320,7 +474,14 @@
       "close_time": "2027-08-04T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXPRIMARYMOV-KXSENATEMID26-AELS-P10",
@@ -334,7 +495,14 @@
       "close_time": "2027-08-04T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXRONI-27AUG-B15",
@@ -348,7 +516,14 @@
       "close_time": "2027-08-15T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXPRIMARYPLACE-KXGOVFLNOMR-2-BDON",
@@ -362,7 +537,14 @@
       "close_time": "2027-08-18T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXSAXONYANHALT-26SEP06-CDU",
@@ -376,7 +558,14 @@
       "close_time": "2027-09-06T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXJOINRONALDO-27-HIL",
@@ -390,7 +579,14 @@
       "close_time": "2027-09-09T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXMECKLENBURGVORPOMMERN-26SEP20-SPD",
@@ -404,7 +600,14 @@
       "close_time": "2027-09-20T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXBRPRESIDENT2-BRPRES26-2-LSIL",
@@ -418,7 +621,14 @@
       "close_time": "2027-10-04T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXISRAELPM-26OCT27-ALIE",
@@ -432,7 +642,14 @@
       "close_time": "2027-10-27T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXHOUSEPOPVOTEMARGIN-27NOV03-B50",
@@ -446,7 +663,14 @@
       "close_time": "2027-11-03T13:59:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXVAHOUSEDEM-26NOV03-BELOW6",
@@ -460,7 +684,14 @@
       "close_time": "2027-11-03T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXMETXCOMBO-26NOV-TAL-COL",
@@ -474,7 +705,14 @@
       "close_time": "2027-11-03T14:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXMIDTERMMOV-WIGOVR-P5",
@@ -488,7 +726,14 @@
       "close_time": "2027-11-03T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXMIDTERMMOV-TXSEND-P7",
@@ -502,7 +747,14 @@
       "close_time": "2027-11-03T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXMIDTERMMOV-TX23R-P17",
@@ -516,7 +768,14 @@
       "close_time": "2027-11-03T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXMIDTERMMOV-PA08R-P7",
@@ -530,7 +789,14 @@
       "close_time": "2027-11-03T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXMIDTERMMOV-OHSENR-P6",
@@ -544,7 +810,14 @@
       "close_time": "2027-11-03T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     },
     {
       "ticker": "KXMIDTERMMOV-OHSEND-P8",
@@ -558,7 +831,224 @@
       "close_time": "2027-11-03T15:00:00Z",
       "status": "open",
       "result": null,
-      "realized_pnl_cents": null
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXAGICO-COMP-26Q3",
+      "event_ticker": "KXAGICO-COMP",
+      "category": "Companies",
+      "entry_yes_bid": 5,
+      "entry_yes_ask": 7,
+      "entry_no_cost": 95,
+      "contracts": 10,
+      "opened_date": "2026-06-30",
+      "close_time": "2026-10-01T03:59:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXCOACHOUTNBADATE-27NNUR-26OCT25",
+      "event_ticker": "KXCOACHOUTNBADATE-27NNUR",
+      "category": "Sports",
+      "entry_yes_bid": 6,
+      "entry_yes_ask": 9,
+      "entry_no_cost": 94,
+      "contracts": 10,
+      "opened_date": "2026-06-30",
+      "close_time": "2026-10-25T03:59:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXIPOSKIMS-DATE-26DEC01",
+      "event_ticker": "KXIPOSKIMS-DATE",
+      "category": "Financials",
+      "entry_yes_bid": 6,
+      "entry_yes_ask": 10,
+      "entry_no_cost": 94,
+      "contracts": 10,
+      "opened_date": "2026-06-30",
+      "close_time": "2026-12-01T04:59:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXTVSEASONRELEASETHELASTOFUS-27-JAN",
+      "event_ticker": "KXTVSEASONRELEASETHELASTOFUS",
+      "category": "Entertainment",
+      "entry_yes_bid": 5,
+      "entry_yes_ask": 10,
+      "entry_no_cost": 95,
+      "contracts": 10,
+      "opened_date": "2026-06-30",
+      "close_time": "2027-01-01T15:00:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXIPOFANNIE-27FEB01",
+      "event_ticker": "KXIPOFANNIE",
+      "category": "Economics",
+      "entry_yes_bid": 8,
+      "entry_yes_ask": 15,
+      "entry_no_cost": 92,
+      "contracts": 10,
+      "opened_date": "2026-06-30",
+      "close_time": "2027-02-01T04:59:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXPRIMARYMOV-SENATECOD26-JHIC-P62",
+      "event_ticker": "KXPRIMARYMOV-SENATECOD26",
+      "category": "Elections",
+      "entry_yes_bid": 11,
+      "entry_yes_ask": 13,
+      "entry_no_cost": 89,
+      "contracts": 10,
+      "opened_date": "2026-06-30",
+      "close_time": "2027-06-30T14:00:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXPRIMARYMOV-GOVCONOMD26-MBEN-P4",
+      "event_ticker": "KXPRIMARYMOV-GOVCONOMD26",
+      "category": "Elections",
+      "entry_yes_bid": 4,
+      "entry_yes_ask": 5,
+      "entry_no_cost": 96,
+      "contracts": 10,
+      "opened_date": "2026-06-30",
+      "close_time": "2027-06-30T14:00:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXPRIMARYMOV-COPRIMARY01D26-DDEG-P10",
+      "event_ticker": "KXPRIMARYMOV-COPRIMARY01D26",
+      "category": "Elections",
+      "entry_yes_bid": 1,
+      "entry_yes_ask": 2,
+      "entry_no_cost": 99,
+      "contracts": 10,
+      "opened_date": "2026-06-30",
+      "close_time": "2027-06-30T14:00:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXRTX5090MS-27JUN-2.000",
+      "event_ticker": "KXRTX5090MS-27JUN",
+      "category": "Financials",
+      "entry_yes_bid": 4,
+      "entry_yes_ask": 5,
+      "entry_no_cost": 96,
+      "contracts": 10,
+      "opened_date": "2026-06-30",
+      "close_time": "2027-07-01T03:59:59Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
+    },
+    {
+      "ticker": "KXNBAROY-27-YLEN",
+      "event_ticker": "KXNBAROY-27",
+      "category": "Sports",
+      "entry_yes_bid": 3,
+      "entry_yes_ask": 4,
+      "entry_no_cost": 97,
+      "contracts": 10,
+      "opened_date": "2026-06-30",
+      "close_time": "2027-07-08T14:00:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": null,
+      "weather_date": null,
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": null,
+      "edge_cents": null,
+      "actual_high": null
     }
   ]
 }
