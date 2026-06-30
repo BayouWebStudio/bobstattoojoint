@@ -14,9 +14,9 @@
       "contracts": 10,
       "opened_date": "2026-06-29",
       "close_time": "2026-06-30T12:00:00",
-      "status": "open",
-      "result_yes": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result_yes": false,
+      "realized_pnl_cents": 14.5
     },
     {
       "market_id": "2715248",
@@ -32,9 +32,9 @@
       "contracts": 10,
       "opened_date": "2026-06-29",
       "close_time": "2026-06-30T12:00:00",
-      "status": "open",
-      "result_yes": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result_yes": false,
+      "realized_pnl_cents": -0.1
     },
     {
       "market_id": "2715237",
@@ -104,9 +104,9 @@
       "contracts": 10,
       "opened_date": "2026-06-29",
       "close_time": "2026-06-30T12:00:00",
-      "status": "open",
-      "result_yes": null,
-      "realized_pnl_cents": null
+      "status": "settled",
+      "result_yes": false,
+      "realized_pnl_cents": 25.5
     },
     {
       "market_id": "2725979",
