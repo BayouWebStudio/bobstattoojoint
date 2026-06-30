@@ -142,6 +142,8 @@ def build_parser() -> argparse.ArgumentParser:
     wxb.add_argument("--lead-days", type=int, default=3, help="Forecast/entry lead (days)")
     wxb.add_argument("--per-city", type=int, default=45, help="Max settled markets per city")
 
+    sub.add_parser("report", help="Consolidated validation scorecard across all ledgers")
+
     idx = sub.add_parser("indices",
                          help="Measure forecast accuracy of HDD/CDD index vs realized (CME-style)")
     idx.add_argument("--lead-days", type=int, default=2, help="Forecast lead (days)")
@@ -428,6 +430,13 @@ def cmd_weather(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    from .report import build_report, render
+
+    print(render(build_report()))
+    return 0
+
+
 def cmd_indices(args: argparse.Namespace) -> int:
     import datetime as dt
 
@@ -583,6 +592,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_weather(args)
     if args.command == "weather-backtest":
         return cmd_weather_backtest(args)
+    if args.command == "report":
+        return cmd_report(args)
     if args.command == "indices":
         return cmd_indices(args)
     if args.command == "polyweather":
