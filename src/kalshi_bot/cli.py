@@ -142,6 +142,11 @@ def build_parser() -> argparse.ArgumentParser:
     wxb.add_argument("--lead-days", type=int, default=3, help="Forecast/entry lead (days)")
     wxb.add_argument("--per-city", type=int, default=45, help="Max settled markets per city")
 
+    idx = sub.add_parser("indices",
+                         help="Measure forecast accuracy of HDD/CDD index vs realized (CME-style)")
+    idx.add_argument("--lead-days", type=int, default=2, help="Forecast lead (days)")
+    idx.add_argument("--past-days", type=int, default=60, help="History window (days)")
+
     pw = sub.add_parser("polyweather",
                         help="Paper forward test: forecast-value bets on Polymarket global weather")
     pw.add_argument("pw_action", choices=["scan", "settle", "status"])
@@ -423,6 +428,39 @@ def cmd_weather(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_indices(args: argparse.Namespace) -> int:
+    import datetime as dt
+
+    import requests
+
+    from .weather.accuracy import accuracy_report, fetch_actual_daily, fetch_forecast_daily_lead
+    from .weather.stations import STATIONS
+
+    session = requests.Session()
+    end = dt.date(2026, 6, 28)
+    start = (end - dt.timedelta(days=args.past_days)).isoformat()
+    print(f"HDD/CDD forecast accuracy at {args.lead_days}-day lead, "
+          f"{start}..{end} (base 65F):\n")
+    reports = []
+    for st in STATIONS.values():
+        try:
+            fc = fetch_forecast_daily_lead(st.latitude, st.longitude, st.timezone,
+                                           args.lead_days, past_days=args.past_days, session=session)
+            ac = fetch_actual_daily(st.latitude, st.longitude, st.timezone, start, end.isoformat(),
+                                    session=session)
+        except Exception as exc:  # noqa: BLE001
+            print(f"{st.name}: error ({exc})")
+            continue
+        rep = accuracy_report(st.name, fc, ac)
+        reports.append(rep)
+        print(f"  {rep}")
+    if reports:
+        mae = sum(r.daily_avg_mae for r in reports) / len(reports)
+        cdd_abs = sum(abs(r.cdd_error_pct) for r in reports) / len(reports)
+        print(f"\nAvg daily temp MAE: {mae:.2f}F | Avg |CDD strip error|: {cdd_abs:.1f}%")
+    return 0
+
+
 def cmd_polyweather(args: argparse.Namespace) -> int:
     import datetime as dt
 
@@ -545,6 +583,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_weather(args)
     if args.command == "weather-backtest":
         return cmd_weather_backtest(args)
+    if args.command == "indices":
+        return cmd_indices(args)
     if args.command == "polyweather":
         return cmd_polyweather(args)
     return 1

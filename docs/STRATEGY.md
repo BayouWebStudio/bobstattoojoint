@@ -152,6 +152,33 @@ result so far. Next step before real money: forward-test it live (open
 forecast-filtered fades at 72h lead, settle over the following days) to confirm
 out-of-sample, exactly as we are doing for the election fade.
 
+## Weather derivatives (CME HDD/CDD) — scoping for a future Hermes export
+
+CME lists weather futures/options that settle on **HDD/CDD/CAT** indices
+($20/index point, ~13 US + 4 EU + Tokyo cities). We added the index math
+(`weather/indices.py`) and a forecast-accuracy harness (`weather/accuracy.py`,
+CLI `indices`) as the cheap precondition check before any edge work.
+
+**Finding 1 — our forecast tracks the index only *sometimes*.** At a 2-day lead
+over 60 days, daily temp MAE is ~2°F (decent), but the *cumulative CDD strip*
+error is large and city-dependent: Austin +1.2% and Denver −4.2% (good), but
+Chicago +12%, Miami +16%, and **LAX +217%**. Mild/coastal climates near the 65°F
+base, plus our gridpoint ≠ the contract station, blow up the index — classic
+**basis risk**. Average |CDD strip error| ≈ 43%.
+
+**Finding 2 — we cannot cheaply validate a CME edge.** CME weather settlement
+history is **paid only** (CME DataMine / dxFeed); there is no free price feed.
+Kalshi and Polymarket gave us free APIs to backtest against; CME does not. So the
+"does our forecast beat the market" test — the only thing that establishes an
+edge — costs money or data we don't have.
+
+**Verdict:** the index tooling is built and reusable (good for a Hermes export),
+but trading CME weather is gated by (a) mediocre index forecast accuracy for some
+cities, (b) no free data to prove an edge, and (c) a futures account + thin
+liquidity. Capability is not edge. Don't build the pricing engine / multi-agent
+crew until there's a measured edge — same discipline that kept the prediction-
+market work honest.
+
 ## Polymarket global weather (read-only; promising but unconfirmed)
 
 Polymarket runs daily temperature markets for ~23 world cities (Seoul, Paris,
