@@ -73,16 +73,16 @@
       "contracts": 10,
       "opened_date": "2026-06-29",
       "close_time": "2026-07-01T07:59:00Z",
-      "status": "open",
-      "result": null,
-      "realized_pnl_cents": null,
+      "status": "settled",
+      "result": "no",
+      "realized_pnl_cents": 11,
       "model_prob": 0.0889,
       "weather_date": "2026-06-30",
       "forecast_mean": 72.3,
       "forecast_sigma": 3.5,
       "entry_mode": "mid",
       "edge_cents": 2.1,
-      "actual_high": null
+      "actual_high": 66.6
     },
     {
       "ticker": "KXRAINNYC-26JUN30-T0",
