@@ -33,7 +33,13 @@ class Engine:
 
     def _size(self, signal: Signal) -> int:
         if signal.fair_value_cents is not None:
+            # fair_value_cents is the strategy's P(YES). Kelly needs the win
+            # probability of the side actually being bought: for a NO contract
+            # that's 1 - P(YES). signal.price_cents is already the price of the
+            # purchased side.
             prob = signal.fair_value_cents / 100.0
+            if signal.side == "no":
+                prob = 1.0 - prob
             n = self.sizer.contracts_for(prob, signal.price_cents)
             if n > 0:
                 return n

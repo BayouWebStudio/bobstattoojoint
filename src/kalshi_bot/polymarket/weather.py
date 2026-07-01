@@ -58,10 +58,12 @@ class PolyTempMarket:
     date: str          # ISO weather date
     bin_title: str     # e.g. "22°C", "21°C or below"
     rng: Range         # parsed integer Celsius bounds
-    yes_price: float   # 0-1 (dollars)
+    yes_price: float   # 0-1 (dollars): book mid when available, else last trade
     token_id: str | None
     volume: float
     market_id: str | None = None
+    best_bid: float | None = None   # executable YES bid (0-1)
+    best_ask: float | None = None   # executable YES ask (0-1)
 
 
 def parse_celsius_bin(title: str) -> Range | None:
@@ -90,8 +92,33 @@ def _date_from_event(event: dict) -> str | None:
     return end or None
 
 
+DAILY_TEMPERATURE_TAG = 103040  # Polymarket "Daily Temperature" tag id
+
+
 def fetch_temp_events(session: requests.Session, *, closed: bool) -> list[dict]:
-    """Fetch temperature events via the public search endpoint."""
+    """Fetch temperature events.
+
+    Prefers the tag-based events endpoint (complete listing across all cities);
+    falls back to the text-search endpoint, which caps results and can miss
+    cities.
+    """
+    try:
+        events: list[dict] = []
+        for offset in (0, 100):
+            r = session.get(f"{GAMMA}/events", params={
+                "tag_id": DAILY_TEMPERATURE_TAG, "closed": str(closed).lower(),
+                "limit": 100, "offset": offset, "order": "endDate",
+                "ascending": "true" if not closed else "false",
+            }, timeout=20)
+            r.raise_for_status()
+            batch = r.json()
+            if not isinstance(batch, list) or not batch:
+                break
+            events += batch
+        if events:
+            return events
+    except Exception:  # noqa: BLE001 - fall back to search
+        pass
     r = session.get(f"{GAMMA}/public-search",
                     params={"q": "highest temperature", "limit_per_type": 100}, timeout=20)
     r.raise_for_status()
@@ -113,15 +140,16 @@ def markets_from_event(event: dict) -> list[PolyTempMarket]:
         rng = parse_celsius_bin(bin_title)
         if rng is None:
             continue
-        # Prefer the live order-book mid (bestBid/bestAsk) over the last-trade
-        # price, which can be stale on thin bins.
-        bb, ba = m.get("bestBid"), m.get("bestAsk")
-        yes = None
-        if bb is not None and ba is not None:
+        # Keep the executable book prices; use the mid for model comparison and
+        # fall back to last trade only when the book is missing (stale-prone).
+        def _f(v):
             try:
-                yes = (float(bb) + float(ba)) / 2.0
+                return float(v)
             except (ValueError, TypeError):
-                yes = None
+                return None
+
+        bb, ba = _f(m.get("bestBid")), _f(m.get("bestAsk"))
+        yes = (bb + ba) / 2.0 if bb is not None and ba is not None else None
         if yes is None:
             try:
                 prices = json.loads(m.get("outcomePrices") or "[]")
@@ -141,7 +169,8 @@ def markets_from_event(event: dict) -> list[PolyTempMarket]:
         except (TypeError, ValueError):
             vol = 0.0
         out.append(PolyTempMarket(city, date, bin_title, rng, yes, token, vol,
-                                  market_id=str(m.get("id")) if m.get("id") else None))
+                                  market_id=str(m.get("id")) if m.get("id") else None,
+                                  best_bid=bb, best_ask=ba))
     return out
 
 

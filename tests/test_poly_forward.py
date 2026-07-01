@@ -8,17 +8,20 @@ def _event(slug="highest-temperature-in-london-on-june-29-2026"):
         "slug": slug, "endDate": "2026-06-29T12:00:00Z", "closed": False,
         "markets": [
             {"id": "m24", "groupItemTitle": "24°C", "outcomePrices": "[\"0.05\",\"0.95\"]",
+             "bestBid": "0.04", "bestAsk": "0.05",
              "clobTokenIds": "[\"t24\",\"t24n\"]", "volumeNum": "40000"},
             {"id": "m25", "groupItemTitle": "25°C", "outcomePrices": "[\"0.30\",\"0.70\"]",
+             "bestBid": "0.29", "bestAsk": "0.31",
              "clobTokenIds": "[\"t25\",\"t25n\"]", "volumeNum": "40000"},
         ],
     }
 
 
-def test_scan_opens_best_value_bet(tmp_path, monkeypatch):
-    # Forecast 25C, sigma 1. The 24C bin's edge (~+19c) exceeds the model-error
-    # cap (15c) and is skipped; the 25C bin (model ~38% vs market 30c, +8c) is
-    # the best remaining value bet. calibrate=False to avoid network.
+def test_scan_opens_best_value_bet_at_executable_price(tmp_path, monkeypatch):
+    # Forecast 25C, sigma 1. The 24C bin's YES edge (~+19c at the 5c ask)
+    # exceeds the model-error cap (15c) and is skipped; the 25C bin (model ~38%
+    # vs 31c ask, ~+7c) is the best remaining value bet. Entry cost must be the
+    # executable ASK (31c), not the mid (30c). calibrate=False to avoid network.
     monkeypatch.setattr(pf, "fetch_temp_events", lambda s, closed: [_event()])
     monkeypatch.setattr(pf, "fetch_forecast_c", lambda *a, **k: (25.0, 1.0))
     led = PolyLedger(str(tmp_path / "p.json"))
@@ -28,7 +31,24 @@ def test_scan_opens_best_value_bet(tmp_path, monkeypatch):
     assert len(opened) == 1
     p = opened[0]
     assert p.city == "London" and p.bin_title == "25°C" and p.side == "yes"
+    assert p.entry_cost_cents == 31.0     # ask, not mid
     assert 4.0 <= p.edge_cents <= 15.0
+
+
+def test_scan_skips_bins_without_executable_quote(tmp_path, monkeypatch):
+    # A bin with no order book at all (bestBid/bestAsk missing) must be skipped
+    # even if its stale last-trade price makes it look like huge value.
+    event = _event()
+    event["markets"] = [{
+        "id": "m24", "groupItemTitle": "24°C", "outcomePrices": "[\"0.001\",\"0.999\"]",
+        "clobTokenIds": "[\"t24\",\"t24n\"]", "volumeNum": "40000",
+    }]
+    monkeypatch.setattr(pf, "fetch_temp_events", lambda s, closed: [event])
+    monkeypatch.setattr(pf, "fetch_forecast_c", lambda *a, **k: (24.0, 1.0))
+    led = PolyLedger(str(tmp_path / "p.json"))
+    opened = scan_poly_weather(led, today="2026-06-27", min_lead_days=1, max_lead_days=3,
+                               min_edge_cents=4.0, min_volume=0, calibrate=False)
+    assert opened == []
 
 
 def test_scan_skips_out_of_lead_window(tmp_path, monkeypatch):

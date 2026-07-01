@@ -37,6 +37,7 @@ def test_weather_scan_picks_highest_ev_value_fade(tmp_path, monkeypatch):
     opened = scan_weather_filtered(
         led, FakeWxClient(markets), today="2026-06-26",
         min_lead_days=2, max_lead_days=3, min_edge_cents=2.0, entry="mid",
+        calibrate=False,
     )
     assert len(opened) == 1
     p = opened[0]
@@ -57,5 +58,29 @@ def test_weather_scan_skips_negative_ev_longshot(tmp_path, monkeypatch):
     led = ForwardLedger(str(tmp_path / "wx.json"))
     opened = scan_weather_filtered(
         led, FakeWxClient(markets), today="2026-06-26", min_edge_cents=2.0,
+        calibrate=False,
     )
     assert opened == []   # forecast says it's likely -> fading it is -EV
+
+
+def test_weather_scan_bias_correction_changes_verdict(tmp_path, monkeypatch):
+    # Raw forecast 88F makes ">=90" look live (fading is -EV). The measured
+    # station calibration says our gridpoint runs +6F hot -> debiased 82F, the
+    # tail is dead, and the fade becomes +EV. Calibration must flip the verdict.
+    monkeypatch.setattr(
+        fc_mod, "fetch_forecast",
+        lambda *a, **k: TempForecast("Central Park", "2026-06-28", 88.0, 3.5, [88.0]),
+    )
+    markets = [_mkt("KXHIGHNY-26JUN28-T89", "90° or above", yb=8, ya=10)]
+    led = ForwardLedger(str(tmp_path / "wx.json"))
+
+    uncal = scan_weather_filtered(led, FakeWxClient(markets), today="2026-06-26",
+                                  min_edge_cents=2.0, calibrate=False)
+    assert uncal == []  # raw forecast: tail plausible, no +EV fade
+
+    monkeypatch.setattr(fc_mod, "station_calibration", lambda *a, **k: (6.0, 3.5))
+    led2 = ForwardLedger(str(tmp_path / "wx2.json"))
+    cal = scan_weather_filtered(led2, FakeWxClient(markets), today="2026-06-26",
+                                min_edge_cents=2.0, calibrate=True)
+    assert len(cal) == 1
+    assert cal[0].forecast_mean == 82.0   # 88 - 6 bias recorded debiased

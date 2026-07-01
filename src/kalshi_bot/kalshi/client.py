@@ -77,10 +77,18 @@ class KalshiClient:
                 )
             )
 
-        resp = self._session.request(method, url, headers=headers, timeout=15, **kwargs)
-        if not resp.ok:
-            raise KalshiError(f"{method} {path} -> {resp.status_code}: {resp.text}")
-        return resp.json() if resp.content else {}
+        # Retry transient failures (rate limits, server errors) with backoff —
+        # heavy scan sessions hit Kalshi's 429 in practice.
+        last_status, last_text = 0, ""
+        for attempt in range(3):
+            resp = self._session.request(method, url, headers=headers, timeout=15, **kwargs)
+            if resp.ok:
+                return resp.json() if resp.content else {}
+            last_status, last_text = resp.status_code, resp.text
+            if resp.status_code not in (429, 500, 502, 503, 504) or attempt == 2:
+                break
+            time.sleep(2 ** attempt)  # 1s, 2s
+        raise KalshiError(f"{method} {path} -> {last_status}: {last_text}")
 
     # -- market data (public) --------------------------------------------
 

@@ -236,6 +236,7 @@ def scan_weather_filtered(
     min_volume: float = 200.0,
     contracts: int = 10,
     max_new: int = 20,
+    calibrate: bool = True,
     session=None,
 ) -> list[Position]:
     """Open forecast-driven NO (fade) positions on weather longshot ranges.
@@ -258,7 +259,7 @@ def scan_weather_filtered(
 
     import requests
 
-    from .weather.forecast import fetch_forecast
+    from .weather.forecast import fetch_forecast, station_calibration
     from .weather.model import parse_range, range_probability
     from .weather.scan import weather_date_from_ticker
     from .weather.stations import STATIONS
@@ -268,6 +269,7 @@ def scan_weather_filtered(
     today_d = dt.date.fromisoformat(today)
     lo, hi = today_d + dt.timedelta(days=min_lead_days), today_d + dt.timedelta(days=max_lead_days)
 
+    cal_cache: dict[str, tuple[float, float]] = {}
     candidates: list[Position] = []
     for series, station in STATIONS.items():
         try:
@@ -294,6 +296,20 @@ def scan_weather_filtered(
                 forecast = None
             if forecast is None:
                 continue
+            mean_f, sigma_f = forecast.mean_f, forecast.sigma_f
+            # Debias per station against measured forecast error — the same
+            # correction the Polymarket scan applies; our gridpoint runs
+            # systematically hot/cold vs some resolution stations (see 'indices').
+            if calibrate:
+                if series not in cal_cache:
+                    try:
+                        cal_cache[series] = station_calibration(
+                            station, today=today, session=session)
+                    except Exception:
+                        cal_cache[series] = (0.0, sigma_f)
+                bias, cal_sigma = cal_cache[series]
+                mean_f -= bias
+                sigma_f = max(cal_sigma, sigma_f)
 
             # In each event, take the longshot NO with the best EV that clears
             # the edge threshold (one position per event for diversification).
@@ -311,7 +327,7 @@ def scan_weather_filtered(
                     vol = 0
                 if not (min_yes_ask <= ya <= max_yes_ask and yb >= 1 and vol >= min_volume):
                     continue
-                prob = range_probability(rng, forecast.mean_f, forecast.sigma_f)
+                prob = range_probability(rng, mean_f, sigma_f)
                 no_cost = (100 - yb) if entry == "ask" else round(100 - (yb + ya) / 2)
                 edge = (1 - prob) * 100 - no_cost - kalshi_fee_cents(no_cost)
                 if edge >= best_edge:
@@ -321,8 +337,8 @@ def scan_weather_filtered(
                         category="Weather", entry_yes_bid=yb, entry_yes_ask=ya,
                         entry_no_cost=no_cost, contracts=contracts, opened_date=today,
                         close_time=m.get("close_time", ""), model_prob=round(prob, 4),
-                        weather_date=wd, forecast_mean=round(forecast.mean_f, 1),
-                        forecast_sigma=round(forecast.sigma_f, 1), entry_mode=entry,
+                        weather_date=wd, forecast_mean=round(mean_f, 1),
+                        forecast_sigma=round(sigma_f, 1), entry_mode=entry,
                         edge_cents=round(edge, 1),
                     )
             if best is not None:

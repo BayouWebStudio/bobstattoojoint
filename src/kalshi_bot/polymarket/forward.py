@@ -147,10 +147,21 @@ def scan_poly_weather(
             if pm.market_id in held or pm.volume < min_volume:
                 continue
             prob = range_probability(pm.rng, mean, sigma)
-            yes_c = pm.yes_price * 100.0
-            ev_yes = prob * 100.0 - yes_c                 # buy YES
-            ev_no = (1 - prob) * 100.0 - (100.0 - yes_c)  # buy NO
-            side, cost, edge = ("yes", yes_c, ev_yes) if ev_yes >= ev_no else ("no", 100 - yes_c, ev_no)
+            # EV at EXECUTABLE prices: buying YES fills at the ask, buying NO at
+            # (1 - bid). A missing side means no resting quote — skip that side
+            # rather than pretending the stale last-trade price is fillable.
+            candidates_sides: list[tuple[str, float, float]] = []
+            if pm.best_ask is not None and pm.best_ask * 100.0 >= 1.0:
+                # <1c asks are extreme model-vs-market disagreements (100x);
+                # against a sharp book that is our error, not theirs.
+                yes_cost = pm.best_ask * 100.0
+                candidates_sides.append(("yes", yes_cost, prob * 100.0 - yes_cost))
+            if pm.best_bid is not None:
+                no_cost = (1.0 - pm.best_bid) * 100.0
+                candidates_sides.append(("no", no_cost, (1 - prob) * 100.0 - no_cost))
+            if not candidates_sides:
+                continue
+            side, cost, edge = max(candidates_sides, key=lambda x: x[2])
             if edge > max_edge_cents:   # implausible vs a sharp market -> model error, skip
                 continue
             if edge >= best_edge:

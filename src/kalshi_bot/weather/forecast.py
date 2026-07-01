@@ -122,6 +122,31 @@ def fetch_actuals(
     }
 
 
+def station_calibration(
+    station: Station, *, lead_days: int = 2, days: int = 45, today: str,
+    session: requests.Session | None = None,
+) -> tuple[float, float]:
+    """Measured (bias, sigma) in °F for a station's lead forecast vs realized.
+
+    ``bias = mean(forecast_high - actual_high)`` over recent days: our gridpoint
+    can run systematically hot/cold vs the market's resolution station (the
+    ``indices`` accuracy run showed this drives large errors, e.g. LAX). ``sigma``
+    is the error spread, floored at :data:`SIGMA_FLOOR_F`. Falls back to
+    ``(0, SIGMA_FLOOR_F + 1)`` when there is too little overlap to measure.
+    """
+    import datetime as dt
+    import statistics
+
+    session = session or requests.Session()
+    fc = fetch_lead_forecast(station, lead_days, past_days=days, session=session)
+    start = (dt.date.fromisoformat(today) - dt.timedelta(days=days + 2)).isoformat()
+    act_raw = fetch_actuals(station, start, today, session=session)
+    errs = [fc[d] - act_raw[d] for d in fc if d in act_raw]
+    if len(errs) < 4:
+        return 0.0, SIGMA_FLOOR_F + 1.0
+    return statistics.mean(errs), max(statistics.pstdev(errs), SIGMA_FLOOR_F)
+
+
 def forecast_from_daily(
     station_name: str, date: str, daily: dict, sigma_floor: float = SIGMA_FLOOR_F
 ) -> TempForecast | None:
