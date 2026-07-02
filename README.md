@@ -7,10 +7,16 @@ API built for programmatic trading. Unlike traditional sportsbooks, an exchange
 does not ban or limit winning accounts — making it a sound foundation for an
 automated strategy.
 
-> ⚠️ **Status: paper-trading scaffold.** This project starts in *paper mode*:
-> it simulates fills against real (or mocked) order books so you can validate a
-> strategy before risking real money. Live order execution is gated behind an
-> explicit flag and a kill-switch.
+> 📦 **Status: harvest mode.** The research phase is complete: one modest real
+> edge was measured (fading overpriced Kalshi longshots, ~+2.5–3.5%), several
+> attractive-looking strategies were tested and honestly killed, and the live
+> paper validation keeps running (settle + report on each visit). Capacity
+> analysis says this is a small-dollar system at current market liquidity, so
+> active build-out has stopped. The reusable pieces are packaged for agent
+> frameworks — see **[HERMES.md](HERMES.md)** — and the full findings live in
+> [docs/STRATEGY.md](docs/STRATEGY.md). Live order execution remains gated
+> behind an explicit flag, a kill-switch, and a 20-settled/t>2 significance
+> gate that no strategy has passed yet.
 
 ## Why this design
 
