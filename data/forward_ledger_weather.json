@@ -104,6 +104,27 @@
       "entry_mode": "ask",
       "edge_cents": 6.0,
       "actual_high": null
+    },
+    {
+      "ticker": "KXRAINNYC-26JUL07-T0",
+      "event_ticker": "KXRAINNYC-26JUL07",
+      "category": "Rain",
+      "entry_yes_bid": 92,
+      "entry_yes_ask": 95,
+      "entry_no_cost": 8,
+      "contracts": 10,
+      "opened_date": "2026-07-06",
+      "close_time": "2026-07-08T03:59:00Z",
+      "status": "open",
+      "result": null,
+      "realized_pnl_cents": null,
+      "model_prob": 0.6467,
+      "weather_date": "2026-07-07",
+      "forecast_mean": null,
+      "forecast_sigma": null,
+      "entry_mode": "ask",
+      "edge_cents": 26.3,
+      "actual_high": null
     }
   ]
 }

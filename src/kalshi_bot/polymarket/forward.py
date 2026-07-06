@@ -96,6 +96,7 @@ def scan_poly_weather(
     contracts: int = 10,
     max_new: int = 20,
     calibrate: bool = True,
+    sides: tuple = ("no",),
 ) -> list[PolyPosition]:
     """Open the best forecast-value bet per live temperature event.
 
@@ -111,7 +112,14 @@ def scan_poly_weather(
 
     cal_cache: dict[str, tuple[float, float]] = {}
     candidates: list[PolyPosition] = []
+    seen_events: set[str] = set()
     for event in fetch_temp_events(session, closed=False):
+        # The tag listing can return an event on more than one page; without
+        # this guard the same market gets opened twice (bug found live).
+        slug = event.get("slug") or event.get("title", "")
+        if slug in seen_events:
+            continue
+        seen_events.add(slug)
         mk = markets_from_event(event)
         if not mk:
             continue
@@ -150,13 +158,16 @@ def scan_poly_weather(
             # EV at EXECUTABLE prices: buying YES fills at the ask, buying NO at
             # (1 - bid). A missing side means no resting quote — skip that side
             # rather than pretending the stale last-trade price is fillable.
+            # ``sides`` defaults to NO-only: model-favored YES tails went 0-for-11
+            # in the live forward test (-100% ROI) — betting our tails against a
+            # sharp book is adverse selection on our own forecast error.
             candidates_sides: list[tuple[str, float, float]] = []
-            if pm.best_ask is not None and pm.best_ask * 100.0 >= 1.0:
+            if "yes" in sides and pm.best_ask is not None and pm.best_ask * 100.0 >= 1.0:
                 # <1c asks are extreme model-vs-market disagreements (100x);
                 # against a sharp book that is our error, not theirs.
                 yes_cost = pm.best_ask * 100.0
                 candidates_sides.append(("yes", yes_cost, prob * 100.0 - yes_cost))
-            if pm.best_bid is not None:
+            if "no" in sides and pm.best_bid is not None:
                 no_cost = (1.0 - pm.best_bid) * 100.0
                 candidates_sides.append(("no", no_cost, (1 - prob) * 100.0 - no_cost))
             if not candidates_sides:
@@ -178,9 +189,14 @@ def scan_poly_weather(
             candidates.append(best)
 
     candidates.sort(key=lambda p: p.close_time or "9999")
-    opened = candidates[:max_new]
-    for p in opened:
+    opened: list[PolyPosition] = []
+    taken_ids: set[str] = set()
+    for p in candidates:
+        if len(opened) >= max_new or p.market_id in taken_ids:
+            continue
+        taken_ids.add(p.market_id)
         ledger.add(p)
+        opened.append(p)
     if opened:
         ledger.save()
     return opened
